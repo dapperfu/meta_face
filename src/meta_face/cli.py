@@ -9,8 +9,8 @@ from pathlib import Path
 import click
 
 from meta_face import __version__
-from meta_face.config import INSIGHTFACE_MODEL, REDIS_HOST, REDIS_PORT
-from meta_face.queue import enqueue_cluster, enqueue_process_image
+from meta_face.config import INSIGHTFACE_MODEL, REDIS_HOST, REDIS_PORT, RQ_QUEUE_NAME
+from meta_face.queue import enqueue_cluster, enqueue_process_image, failed_job_traceback, iter_failed_jobs
 from meta_face.scanner import scan_directory
 from meta_face.sidecar import get_face_section, list_face_tools, sidecar_path_for_media
 from meta_face.tools.registry import validate_tools
@@ -161,6 +161,38 @@ def cluster(path: Path, force: bool, enqueue: bool) -> None:
 
     result = run_cluster(str(path.resolve()), force=force)
     click.echo(json.dumps(result, indent=2))
+
+
+@main.command()
+@click.option(
+    "--queue",
+    "queue_name",
+    default=RQ_QUEUE_NAME,
+    show_default=True,
+    help="RQ queue to inspect.",
+)
+@click.option("--limit", default=10, show_default=True, help="Max failed jobs to list.")
+@click.argument("job_id", required=False)
+def failed(queue_name: str, limit: int, job_id: str | None) -> None:
+    """Show tracebacks for failed RQ jobs."""
+    if job_id:
+        traceback = failed_job_traceback(job_id, queue_name=queue_name)
+        if not traceback:
+            click.echo(f"No traceback stored for job {job_id}", err=True)
+            sys.exit(1)
+        click.echo(traceback)
+        return
+
+    rows = iter_failed_jobs(queue_name, limit=limit)
+    if not rows:
+        click.echo(f"No failed jobs in queue '{queue_name}'.")
+        return
+
+    for idx, (failed_id, traceback) in enumerate(rows):
+        if idx:
+            click.echo("\n" + ("=" * 72) + "\n")
+        click.echo(f"Job: {failed_id}")
+        click.echo(traceback or "(no traceback stored)")
 
 
 @main.command("info")
