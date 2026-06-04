@@ -39,10 +39,13 @@ dev = [
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/meta_face"]
+only-include = ["meta_face"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/meta_face" = "meta_face"
 
 [tool.hatch.build.targets.sdist]
-include = ["src/meta_face", "README.md", "pyproject.toml"]
+only-include = ["meta_face", "README.md", "pyproject.toml"]
 
 [tool.ruff]
 line-length = 100
