@@ -14,5 +14,17 @@ services:
       retries: 5
     restart: unless-stopped
 
+  rq-dashboard:
+    image: eoranged/rq-dashboard:latest
+    container_name: meta-face-rq-dashboard
+    ports:
+      - "29181:9181"
+    environment:
+      RQ_DASHBOARD_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   meta_face_redis_data:
