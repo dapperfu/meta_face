@@ -33,8 +33,14 @@ def main() -> None:
     help="Comma-separated tools: scrfd, arcface, hdbscan (alias for cluster).",
 )
 @click.option("--recursive/--no-recursive", default=True, show_default=True)
-def scan(path: Path, force: bool, tools: str, recursive: bool) -> None:
-    """Discover images under PATH and enqueue processing jobs."""
+@click.option(
+    "--enqueue/--run-now",
+    default=True,
+    show_default=True,
+    help="Enqueue jobs for a worker, or run InsightFace scanning inline now.",
+)
+def scan(path: Path, force: bool, tools: str, recursive: bool, enqueue: bool) -> None:
+    """Discover images under PATH and run/enqueue InsightFace processing jobs."""
     tool_list = validate_tools([t.strip() for t in tools.split(",") if t.strip()])
     to_enqueue, stats, run_cluster = scan_directory(
         path,
@@ -46,6 +52,10 @@ def scan(path: Path, force: bool, tools: str, recursive: bool) -> None:
     from meta_face.scanner import resolve_per_image_tools
 
     per_image_tools = resolve_per_image_tools(tool_list)
+
+    if not enqueue:
+        _scan_inline(path, to_enqueue, per_image_tools, run_cluster, force, stats)
+        return
 
     job_ids: list[str] = []
     for image_path in to_enqueue:
@@ -65,6 +75,41 @@ def scan(path: Path, force: bool, tools: str, recursive: bool) -> None:
         click.echo(f"Cluster job enqueued: {cluster_job_id}")
     if not job_ids and not cluster_job_id:
         click.echo("Nothing to enqueue.")
+        sys.exit(0 if stats.discovered else 1)
+
+
+def _scan_inline(
+    path: Path,
+    images: list[Path],
+    per_image_tools: list[str],
+    run_cluster: bool,
+    force: bool,
+    stats,
+) -> None:
+    """Run InsightFace scanning inline (no Redis/worker required)."""
+    from meta_face.jobs import process_image, run_cluster as run_cluster_job
+
+    processed = 0
+    faces_total = 0
+    for image_path in images:
+        result = process_image(str(image_path), per_image_tools, force=force)
+        if result.get("status") == "ok":
+            processed += 1
+            faces_total += int(result.get("face_count", 0))
+
+    cluster_result = None
+    if run_cluster:
+        cluster_result = run_cluster_job(str(path.resolve()), force=force)
+
+    click.echo(
+        f"Discovered {stats.discovered} images; "
+        f"processed {processed}; skipped {stats.skipped}; "
+        f"detected {faces_total} face(s)."
+    )
+    if cluster_result is not None:
+        click.echo(f"Cluster result: {json.dumps(cluster_result, indent=2)}")
+    if not processed and cluster_result is None:
+        click.echo("Nothing to process.")
         sys.exit(0 if stats.discovered else 1)
 
 
