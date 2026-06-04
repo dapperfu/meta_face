@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
 
   rq-dashboard:
-    image: eoranged/rq-dashboard:latest
+    build: docker/rq-dashboard
     container_name: meta-face-rq-dashboard
     ports:
       - "29181:9181"
