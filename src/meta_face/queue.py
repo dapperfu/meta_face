@@ -27,6 +27,25 @@ def get_cluster_queue() -> Queue:
     return get_queue(RQ_CLUSTER_QUEUE_NAME)
 
 
+def failed_job_traceback(job_id: str, *, queue_name: str | None = None) -> str | None:
+    """Return the traceback string for a failed job, if available."""
+    from rq.job import Job
+
+    queue = get_queue(queue_name)
+    job = Job.fetch(job_id, connection=queue.connection)
+    latest = job.latest_result()
+    if latest and latest.exc_string:
+        return latest.exc_string
+    return job.exc_info
+
+
+def iter_failed_jobs(queue_name: str | None = None, limit: int = 10) -> list[tuple[str, str | None]]:
+    """Return (job_id, traceback) pairs for failed jobs in a queue."""
+    queue = get_queue(queue_name)
+    job_ids = queue.failed_job_registry.get_job_ids(0, limit)
+    return [(job_id, failed_job_traceback(job_id, queue_name=queue_name)) for job_id in job_ids]
+
+
 def enqueue_process_image(
     image_path: Path,
     tools: list[str],
