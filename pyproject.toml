@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meta-face"
+version = "0.1.0"
+description = "Multi-tool face detection pipeline writing results to sidecar-rs .scar files"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "meta_face contributors" }]
+dependencies = [
+    "click>=8.1",
+    "rq>=2.0",
+    "redis>=5.0",
+    "insightface>=0.7.3",
+    "onnxruntime-gpu>=1.17",
+    "numpy>=1.24",
+    "opencv-python-headless>=4.8",
+    "hdbscan>=0.8.33",
+    "faiss-gpu-cu12>=1.8.0",
+    "pillow>=10.0",
+    "pillow-heif>=0.16",
+    "sidecar_rs @ git+https://github.com/dapperfu/sidecar-rs.git",
+]
+
+[project.scripts]
+meta-face = "meta_face.cli:main"
+mf = "meta_face.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meta_face"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/meta_face", "README.md", "pyproject.toml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
