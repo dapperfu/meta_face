@@ -62,4 +62,4 @@ def run_cluster(root_path: str, force: bool = False) -> dict[str, Any]:
 
 def job_id_for_path(prefix: str, path: Path) -> str:
     digest = hashlib.sha256(str(path.resolve()).encode()).hexdigest()[:24]
-    return f"{prefix}:{digest}"
+    return f"{prefix}-{digest}"
