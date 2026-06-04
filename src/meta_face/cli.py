@@ -9,7 +9,7 @@ from pathlib import Path
 import click
 
 from meta_face import __version__
-from meta_face.config import DEFAULT_TOOLS, REDIS_HOST, REDIS_PORT
+from meta_face.config import DEFAULT_TOOLS, INSIGHTFACE_MODEL, REDIS_HOST, REDIS_PORT
 from meta_face.queue import enqueue_cluster, enqueue_process_image
 from meta_face.scanner import scan_directory
 from meta_face.sidecar import get_face_section, list_face_tools, sidecar_path_for_media
@@ -66,6 +66,27 @@ def scan(path: Path, force: bool, tools: str, recursive: bool) -> None:
     if not job_ids and not cluster_job_id:
         click.echo("Nothing to enqueue.")
         sys.exit(0 if stats.discovered else 1)
+
+
+@main.command("download")
+@click.option(
+    "--model",
+    default=INSIGHTFACE_MODEL,
+    show_default=True,
+    help="insightface model pack to download (SCRFD + ArcFace).",
+)
+@click.option("--force", is_flag=True, help="Re-download even if the model pack is present.")
+def download(model: str, force: bool) -> None:
+    """Download face model weights ahead of running detection/embedding."""
+    from meta_face.models import download as download_pack
+    from meta_face.models import is_available, model_dir
+
+    if is_available(model) and not force:
+        click.echo(f"Model '{model}' already present at {model_dir(model)}")
+        return
+    click.echo(f"Downloading model '{model}'...")
+    path = download_pack(model, force=force)
+    click.echo(f"Model '{model}' ready at {path}")
 
 
 @main.command()
