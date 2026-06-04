@@ -9,7 +9,7 @@ from pathlib import Path
 import click
 
 from meta_face import __version__
-from meta_face.config import DEFAULT_TOOLS, INSIGHTFACE_MODEL, REDIS_HOST, REDIS_PORT
+from meta_face.config import INSIGHTFACE_MODEL, REDIS_HOST, REDIS_PORT
 from meta_face.queue import enqueue_cluster, enqueue_process_image
 from meta_face.scanner import scan_directory
 from meta_face.sidecar import get_face_section, list_face_tools, sidecar_path_for_media
@@ -28,9 +28,12 @@ def main() -> None:
 @click.option("--force", is_flag=True, help="Re-queue even when face.<tool> data exists.")
 @click.option(
     "--tools",
-    default=",".join(DEFAULT_TOOLS),
+    default="insightface",
     show_default=True,
-    help="Comma-separated tools: scrfd, arcface, hdbscan (alias for cluster).",
+    help=(
+        "Comma-separated tools: insightface (scrfd + arcface), scrfd, "
+        "arcface, hdbscan (alias for cluster)."
+    ),
 )
 @click.option("--recursive/--no-recursive", default=True, show_default=True)
 @click.option(

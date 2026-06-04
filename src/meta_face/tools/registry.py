@@ -8,17 +8,37 @@ TOOL_ALIASES: dict[str, str] = {
     "hdbscan": "cluster",
 }
 
+# Meta-tool names that expand to several real tools. "insightface" is the
+# single SCRFD detection + ArcFace recognition pass.
+TOOL_GROUPS: dict[str, tuple[str, ...]] = {
+    "insightface": ("scrfd", "arcface"),
+}
+
 
 def normalize_tool_name(name: str) -> str:
     key = name.strip().lower()
     return TOOL_ALIASES.get(key, key)
 
 
+def expand_group(name: str) -> list[str]:
+    """Expand a meta-tool (e.g. 'insightface') to its real tools."""
+    key = name.strip().lower()
+    if key in TOOL_GROUPS:
+        return list(TOOL_GROUPS[key])
+    return [normalize_tool_name(name)]
+
+
 def validate_tools(tools: list[str]) -> list[str]:
-    normalized = [normalize_tool_name(t) for t in tools if t.strip()]
+    normalized: list[str] = []
+    for tool in tools:
+        if not tool.strip():
+            continue
+        for expanded in expand_group(tool):
+            if expanded not in normalized:
+                normalized.append(expanded)
     unknown = [t for t in normalized if t not in ALL_TOOLS]
     if unknown:
-        valid = ", ".join(sorted(ALL_TOOLS | {"hdbscan"}))
+        valid = ", ".join(sorted(ALL_TOOLS | set(TOOL_ALIASES) | set(TOOL_GROUPS)))
         raise ValueError(f"Unknown tools: {', '.join(unknown)}. Valid: {valid}")
     return normalized
 
