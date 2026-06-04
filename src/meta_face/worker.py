@@ -8,7 +8,7 @@ import sys
 
 from rq import Worker
 
-from meta_face.config import RQ_CLUSTER_QUEUE_NAME, RQ_QUEUE_NAME, REDIS_URL
+from meta_face.config import RQ_CLUSTER_QUEUE_NAME, RQ_QUEUE_NAME
 from meta_face.queue import get_redis
 
 
