@@ -21,6 +21,11 @@ DEFAULT_TOOLS: tuple[str, ...] = ("scrfd", "arcface")
 # insightface model pack (SCRFD + ArcFace).
 INSIGHTFACE_MODEL: str = os.environ.get("META_FACE_MODEL", "buffalo_l")
 INSIGHTFACE_CTX_ID: int = int(os.environ.get("META_FACE_GPU_ID", "0"))
+# Root for downloaded model packs; shared by the downloader and inference.
+INSIGHTFACE_ROOT: str = os.environ.get(
+    "META_FACE_INSIGHTFACE_ROOT",
+    str(Path.home() / ".insightface"),
+)
 
 # Redis / RQ
 REDIS_HOST: str = os.environ.get("META_FACE_REDIS_HOST", "127.0.0.1")
@@ -62,6 +67,12 @@ def ensure_data_dir() -> Path:
     """Create the data directory if missing."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     return DATA_DIR
+
+
+def insightface_model_dir(name: str | None = None) -> Path:
+    """Directory where an insightface model pack lives (may not yet exist)."""
+    root = Path(os.path.expanduser(INSIGHTFACE_ROOT))
+    return root / "models" / (name or INSIGHTFACE_MODEL)
 
 
 def tool_version_key(tool: str) -> str:
