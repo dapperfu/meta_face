@@ -85,7 +85,7 @@ def get_face_section(doc: SidecarDocument, tool: str) -> dict[str, Any]:
     """Return all face.<tool>.* keys as a nested dict."""
     prefix = f"{FACE_KEY_PREFIX}{tool}."
     section: dict[str, Any] = {}
-    for key, value in doc.entries():
+    for key, value in doc.entries().items():
         if key.startswith(prefix):
             section[key[len(prefix) :]] = value
     return section
