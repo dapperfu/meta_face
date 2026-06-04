@@ -18,6 +18,9 @@ docker compose up -d
 # Install (GPU host)
 pip install .
 
+# Download model weights (SCRFD + ArcFace) up front
+mf download
+
 # Terminal 1: worker
 mf worker
 
@@ -40,6 +43,21 @@ mf info photo.jpg --json
 ```bash
 mf worker --workers 4
 ```
+
+## Model weights
+
+Detection and embedding use the insightface `buffalo_l` pack (SCRFD + ArcFace).
+Weights download lazily on first inference, but you can fetch them explicitly as
+a standalone step (no GPU required):
+
+```bash
+mf download                 # default model pack (buffalo_l)
+mf download --model antelopev2
+mf download --force         # re-download
+```
+
+Weights are stored under `META_FACE_INSIGHTFACE_ROOT` (default `~/.insightface/models/<pack>`),
+which is also where inference loads them from.
 
 ## Sidecar layout
 
@@ -75,6 +93,7 @@ Environment variables:
 | `META_FACE_REDIS_URL` | derived | Full Redis URL |
 | `META_FACE_DATA` | `~/.meta_face` | FAISS index directory |
 | `META_FACE_MODEL` | `buffalo_l` | insightface model pack |
+| `META_FACE_INSIGHTFACE_ROOT` | `~/.insightface` | Model weights root |
 | `META_FACE_GPU_ID` | `0` | CUDA device id |
 
 ## Supported image formats
