@@ -18,8 +18,7 @@ from meta_face.config import (
     tool_data_key,
 )
 from meta_face.imaging import is_image_path
-from meta_face.sidecar import has_tool, load_or_create, save, write_tool_result
-from meta_face.tools.registry import normalize_tool_name
+from meta_face.sidecar import load_or_create, save, write_tool_result
 
 
 @dataclass
@@ -44,8 +43,6 @@ def collect_embeddings(root: Path, *, recursive: bool = True) -> tuple[np.ndarra
 
     for media_path in _iter_sidecar_images(root, recursive=recursive):
         doc, _ = load_or_create(media_path)
-        if not has_tool(doc, "arcface"):
-            continue
         emb_key = tool_data_key("arcface", "embeddings")
         if emb_key not in doc:
             continue
@@ -122,12 +119,7 @@ def write_cluster_labels(refs: list[FaceRef], labels: np.ndarray) -> int:
 
 def run_cluster_pipeline(root: Path, *, force: bool = False, recursive: bool = True) -> dict[str, Any]:
     root = root.resolve()
-    if not force:
-        sample = _iter_sidecar_images(root, recursive=recursive)
-        if sample:
-            doc, _ = load_or_create(sample[0])
-            if has_tool(doc, "cluster") and normalize_tool_name("cluster") == "cluster":
-                pass  # still re-run collection level; force controls skip at scan time only
+    _ = force  # reserved for future skip logic at pipeline level
 
     embeddings, refs = collect_embeddings(root, recursive=recursive)
     if embeddings.shape[0] == 0:
