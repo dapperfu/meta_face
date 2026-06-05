@@ -6,12 +6,15 @@ from meta_face.config import AGGREGATE_TOOLS, ALL_TOOLS, PER_IMAGE_TOOLS
 
 TOOL_ALIASES: dict[str, str] = {
     "hdbscan": "cluster",
+    "hdbscan_dlib": "cluster_dlib",
 }
 
 # Meta-tool names that expand to several real tools. "insightface" is the
 # single SCRFD detection + ArcFace recognition pass.
 TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "insightface": ("scrfd", "arcface"),
+    "face_recognition": ("dlib_detect", "dlib_embed"),
+    "detectron2": ("detectron2",),
 }
 
 
@@ -59,4 +62,26 @@ def expand_dependencies(tools: list[str]) -> list[str]:
             result.append("scrfd")
         if "arcface" in names and "arcface" not in result:
             result.append("arcface")
+    if "dlib_detect" in names or "dlib_embed" in names:
+        if "dlib_detect" not in result:
+            result.append("dlib_detect")
+        if "dlib_embed" in names and "dlib_embed" not in result:
+            result.append("dlib_embed")
+    if "detectron2" in names and "detectron2" not in result:
+        result.append("detectron2")
     return result
+
+
+def insightface_tools_requested(tools: list[str]) -> bool:
+    names = set(validate_tools(tools))
+    return bool(names & {"scrfd", "arcface"})
+
+
+def dlib_tools_requested(tools: list[str]) -> bool:
+    names = set(validate_tools(tools))
+    return bool(names & {"dlib_detect", "dlib_embed"})
+
+
+def detectron2_tools_requested(tools: list[str]) -> bool:
+    names = set(validate_tools(tools))
+    return "detectron2" in names
