@@ -6,13 +6,14 @@ from functools import lru_cache
 from typing import Any
 
 import numpy as np
-from insightface.app import FaceAnalysis
 
 from meta_face.config import INSIGHTFACE_CTX_ID, INSIGHTFACE_MODEL, INSIGHTFACE_ROOT
 
 
 @lru_cache(maxsize=1)
-def get_face_app() -> FaceAnalysis:
+def get_face_app():
+    from insightface.app import FaceAnalysis
+
     app = FaceAnalysis(
         name=INSIGHTFACE_MODEL,
         root=INSIGHTFACE_ROOT,
