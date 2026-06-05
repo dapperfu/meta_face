@@ -8,11 +8,25 @@ import sys
 
 from rq import Worker
 
-from meta_face.config import RQ_CLUSTER_QUEUE_NAME, RQ_QUEUE_NAME
+from meta_face.config import RQ_CLUSTER_QUEUE_NAME, RQ_QUEUE_NAME, RQ_SCAN_QUEUE_NAME
+from meta_face.deps import PipelineDependencyError, require_cluster_runtime, require_inference_runtime
 from meta_face.queue import get_redis
 
 
+def _validate_worker_deps(queue_names: list[str]) -> None:
+    if RQ_QUEUE_NAME in queue_names:
+        require_inference_runtime()
+    if RQ_CLUSTER_QUEUE_NAME in queue_names:
+        require_cluster_runtime()
+
+
 def _worker_main(queue_names: list[str]) -> None:
+    try:
+        _validate_worker_deps(queue_names)
+    except PipelineDependencyError as exc:
+        print(f"meta-face worker: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     redis_conn = get_redis()
     worker = Worker(queue_names, connection=redis_conn)
     worker.work(with_scheduler=False)
@@ -20,7 +34,7 @@ def _worker_main(queue_names: list[str]) -> None:
 
 def start_workers(workers: int = 1, *, cluster: bool = False) -> None:
     """Start one or more RQ workers (multiprocessing when workers > 1)."""
-    queue_names = [RQ_QUEUE_NAME]
+    queue_names = [RQ_SCAN_QUEUE_NAME, RQ_QUEUE_NAME]
     if cluster:
         queue_names.append(RQ_CLUSTER_QUEUE_NAME)
 
