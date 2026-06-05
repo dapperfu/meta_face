@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import sidecar_rs
 from sidecar_rs import SidecarDocument
 
 from meta_face.config import (
@@ -57,8 +59,26 @@ def load_or_create(media_path: Path) -> tuple[SidecarDocument, Path]:
 
 
 def save(doc: SidecarDocument, scar_path: Path) -> None:
+    """Persist a document (prefer update_sidecar for concurrent-safe writes)."""
     scar_path.parent.mkdir(parents=True, exist_ok=True)
     doc.to_path(str(scar_path))
+
+
+def update_sidecar(
+    media_path: Path,
+    patch: Callable[[SidecarDocument], None],
+) -> Path:
+    """Load latest sidecar under lock, apply patch, and atomically save."""
+    media_path = media_path.resolve()
+    scar_path = sidecar_path_for_media(media_path)
+
+    def _apply(doc: SidecarDocument) -> None:
+        if sidecar_rs.MEDIA_BASENAME_KEY not in doc:
+            doc.set_media_basename(media_path.name)
+        patch(doc)
+
+    SidecarDocument.update_path(scar_path, _apply)
+    return scar_path
 
 
 def has_tool(doc: SidecarDocument, tool: str) -> bool:
