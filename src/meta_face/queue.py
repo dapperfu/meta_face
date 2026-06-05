@@ -11,6 +11,7 @@ from meta_face.config import (
     RQ_CLUSTER_QUEUE_NAME,
     RQ_JOB_TIMEOUT,
     RQ_QUEUE_NAME,
+    RQ_SCAN_QUEUE_NAME,
     REDIS_URL,
 )
 
@@ -25,6 +26,10 @@ def get_queue(name: str | None = None) -> Queue:
 
 def get_cluster_queue() -> Queue:
     return get_queue(RQ_CLUSTER_QUEUE_NAME)
+
+
+def get_scan_queue() -> Queue:
+    return get_queue(RQ_SCAN_QUEUE_NAME)
 
 
 def failed_job_traceback(job_id: str, *, queue_name: str | None = None) -> str | None:
@@ -66,7 +71,11 @@ def enqueue_process_image(
     return job.id
 
 
-def enqueue_cluster(root: Path, force: bool = False) -> str:
+def enqueue_cluster(
+    root: Path,
+    force: bool = False,
+    embedding_tool: str = "arcface",
+) -> str:
     from meta_face.jobs import job_id_for_path, run_cluster
 
     queue = get_cluster_queue()
@@ -74,7 +83,30 @@ def enqueue_cluster(root: Path, force: bool = False) -> str:
         run_cluster,
         str(root),
         force,
-        job_id=job_id_for_path("cluster", root),
+        embedding_tool,
+        job_id=job_id_for_path(f"cluster-{embedding_tool}", root),
+        failure_ttl=86400,
+    )
+    return job.id
+
+
+def enqueue_scan_path(
+    directory: Path,
+    tools: list[str],
+    force: bool = False,
+    recursive: bool = True,
+) -> str:
+    """Enqueue a per-directory scan job on the high-priority scan queue."""
+    from meta_face.jobs import job_id_for_path, scan_path
+
+    queue = get_scan_queue()
+    job = queue.enqueue(
+        scan_path,
+        str(directory),
+        tools,
+        force,
+        recursive,
+        job_id=job_id_for_path("scan", directory),
         failure_ttl=86400,
     )
     return job.id
