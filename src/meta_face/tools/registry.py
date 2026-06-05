@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from meta_face.config import AGGREGATE_TOOLS, ALL_TOOLS, PER_IMAGE_TOOLS
+from meta_face.config import AGGREGATE_TOOLS, ALL_TOOLS, ANALYSIS_TOOLS, PER_IMAGE_TOOLS
 
 TOOL_ALIASES: dict[str, str] = {
     "hdbscan": "cluster",
@@ -15,6 +15,32 @@ TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "insightface": ("scrfd", "arcface"),
     "face_recognition": ("dlib_detect", "dlib_embed"),
     "detectron2": ("detectron2",),
+    # Analysis meta-tools (crop-based; require scrfd).
+    "expression": (
+        "emotiefflib",
+        "opencv_fer",
+        "mediapipe_blendshapes",
+        "fer_plus",
+    ),
+    "emotion": (
+        "emotiefflib",
+        "opencv_fer",
+        "fer_plus",
+        "deepface",
+        "emonet",
+    ),
+    "au": ("libreface", "openface3", "py_feat"),
+    "gaze": ("yakhyo_gaze", "l2cs_net", "libreface", "openface3", "uniface"),
+    "blendshapes": ("mediapipe_blendshapes",),
+    "attributes": ("fairface", "deepface"),
+    "parsing": ("bisenet", "uniface"),
+    "liveness": ("face_antispoof_onnx", "face_anti_spoofing", "uniface", "inspireface"),
+    "face_analysis": (
+        "emotiefflib",
+        "opencv_fer",
+        "mediapipe_blendshapes",
+    ),
+    "all_analysis": tuple(sorted(ANALYSIS_TOOLS)),
 }
 
 
@@ -54,10 +80,19 @@ def is_aggregate(tool: str) -> bool:
     return normalize_tool_name(tool) in AGGREGATE_TOOLS
 
 
+def is_analysis_tool(tool: str) -> bool:
+    return normalize_tool_name(tool) in ANALYSIS_TOOLS
+
+
+def analysis_tools_requested(tools: list[str]) -> bool:
+    names = set(validate_tools(tools))
+    return bool(names & ANALYSIS_TOOLS)
+
+
 def expand_dependencies(tools: list[str]) -> list[str]:
     names = validate_tools(tools)
     result: list[str] = []
-    if "scrfd" in names or "arcface" in names:
+    if "scrfd" in names or "arcface" in names or analysis_tools_requested(names):
         if "scrfd" not in result:
             result.append("scrfd")
         if "arcface" in names and "arcface" not in result:
@@ -69,6 +104,9 @@ def expand_dependencies(tools: list[str]) -> list[str]:
             result.append("dlib_embed")
     if "detectron2" in names and "detectron2" not in result:
         result.append("detectron2")
+    for tool in names:
+        if tool in ANALYSIS_TOOLS and tool not in result:
+            result.append(tool)
     return result
 
 

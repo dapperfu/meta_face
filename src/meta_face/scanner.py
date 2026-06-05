@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from meta_face.config import AGGREGATE_TOOLS, DEFAULT_TOOLS, PER_IMAGE_TOOLS
+from meta_face.config import AGGREGATE_TOOLS, ANALYSIS_TOOLS, DEFAULT_TOOLS, PER_IMAGE_TOOLS
 from meta_face.imaging import is_image_path
 from meta_face.sidecar import has_tool, load_or_create
 
@@ -34,14 +34,32 @@ def normalize_tools(tools: list[str]) -> list[str]:
     return normalized
 
 
+# Backend pipelines enqueued as separate RQ jobs (one job per group).
+BACKEND_JOB_GROUPS: tuple[tuple[str, frozenset[str]], ...] = (
+    ("insightface", frozenset({"scrfd", "arcface"})),
+    ("face_recognition", frozenset({"dlib_detect", "dlib_embed"})),
+    ("detectron2", frozenset({"detectron2"})),
+    ("analysis", ANALYSIS_TOOLS),
+)
+
+
+def resolve_backend_job_groups(per_image_tools: list[str]) -> list[tuple[str, list[str]]]:
+    """Split per-image tools into one (backend_key, tools) job per backend pipeline."""
+    groups: list[tuple[str, list[str]]] = []
+    for backend_key, members in BACKEND_JOB_GROUPS:
+        group_tools = [tool for tool in per_image_tools if tool in members]
+        if group_tools:
+            groups.append((backend_key, group_tools))
+    return groups
+
+
 def resolve_per_image_tools(tools: list[str]) -> list[str]:
     """Return ordered per-image tools including dependencies."""
     requested = set(normalize_tools(tools))
     result: list[str] = []
-    if "scrfd" in requested or "arcface" in requested:
-        if "scrfd" in requested or "arcface" in requested:
-            if "scrfd" not in result:
-                result.append("scrfd")
+    if requested & ({"scrfd", "arcface"} | ANALYSIS_TOOLS):
+        if "scrfd" not in result:
+            result.append("scrfd")
         if "arcface" in requested:
             result.append("arcface")
     if "dlib_detect" in requested or "dlib_embed" in requested:
@@ -51,6 +69,9 @@ def resolve_per_image_tools(tools: list[str]) -> list[str]:
             result.append("dlib_embed")
     if "detectron2" in requested:
         result.append("detectron2")
+    for tool in normalize_tools(tools):
+        if tool in ANALYSIS_TOOLS and tool not in result:
+            result.append(tool)
     if not result and not requested & AGGREGATE_TOOLS:
         result.extend(DEFAULT_TOOLS)
     return result

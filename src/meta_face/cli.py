@@ -13,10 +13,17 @@ import click
 from tqdm import tqdm
 
 from meta_face import __version__
-from meta_face.config import INSIGHTFACE_MODEL, REDIS_HOST, REDIS_PORT, RQ_QUEUE_NAME
+from meta_face.config import (
+    DEFAULT_SCAN_META_TOOLS,
+    INSIGHTFACE_MODEL,
+    REDIS_HOST,
+    REDIS_PORT,
+    RQ_QUEUE_NAME,
+)
 from meta_face.config import normalize_embedding_tool
 from meta_face.deps import (
     PipelineDependencyError,
+    adjust_per_image_tools_for_runtime,
     require_cluster_runtime,
     require_inference_runtime,
     require_insightface_runtime,
@@ -56,12 +63,15 @@ def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
 @click.option("--force", is_flag=True, help="Re-queue even when face.<tool> data exists.")
 @click.option(
     "--tools",
-    default="insightface",
+    default=",".join(DEFAULT_SCAN_META_TOOLS),
     show_default=True,
     help=(
         "Comma-separated tools: insightface (scrfd + arcface), "
-        "face_recognition (dlib_detect + dlib_embed), detectron2, scrfd, arcface, "
-        "dlib_detect, dlib_embed, hdbscan (cluster), hdbscan_dlib (cluster_dlib)."
+        "face_recognition (dlib_detect + dlib_embed), detectron2, "
+        "expression/emotion/gaze/au/blendshapes/attributes/parsing/liveness meta-tools, "
+        "or individual tools (emotiefflib, opencv_fer, mediapipe_blendshapes, libreface, "
+        "openface3, yakhyo_gaze, fairface, bisenet, uniface, deepface, ...). "
+        "Default runs insightface, face_recognition, and detectron2 (no clustering)."
     ),
 )
 @click.option(
@@ -77,7 +87,9 @@ def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
     show_default=True,
     help="Enqueue jobs for a worker, or run face scanning inline now.",
 )
+@click.pass_context
 def scan(
+    ctx: click.Context,
     path: Path,
     force: bool,
     tools: str,
@@ -88,6 +100,26 @@ def scan(
     """Discover images under PATH and run/enqueue face processing jobs."""
     tool_list = validate_tools([t.strip() for t in tools.split(",") if t.strip()])
     per_image_tools = resolve_per_image_tools(tool_list)
+    requested_raw = {t.strip().lower() for t in tools.split(",") if t.strip()}
+    analysis_explicit = requested_raw & {
+        t for t in tool_list if t not in {"scrfd", "arcface", "dlib_detect", "dlib_embed", "detectron2"}
+    }
+    detectron2_explicit = (
+        ctx.get_parameter_source("tools") == click.core.ParameterSource.COMMANDLINE
+        and "detectron2" in requested_raw
+    )
+    try:
+        per_image_tools, runtime_warnings = adjust_per_image_tools_for_runtime(
+            per_image_tools,
+            detectron2_explicit=detectron2_explicit,
+            analysis_explicit=analysis_explicit,
+        )
+    except PipelineDependencyError as exc:
+        _exit_on_dependency_error(exc)
+    if "detectron2" not in per_image_tools:
+        tool_list = [tool for tool in tool_list if tool != "detectron2"]
+    for warning in runtime_warnings:
+        click.echo(click.style(warning, fg="yellow"), err=True)
     run_cluster = run_cluster_requested(tool_list)
     embedding_tool = resolve_cluster_embedding_tool(tool_list, embeddings)
 
@@ -123,12 +155,12 @@ def scan(
                 enqueue_scan_path(subdir, tool_list, force=force, recursive=recursive)
             )
 
-    image_job_ids: list[str] = []
+    backend_job_ids: list[str] = []
     if per_image_tools:
         for image_path in to_enqueue:
-            job_id = enqueue_process_image(image_path, per_image_tools, force=force)
-            if job_id:
-                image_job_ids.append(job_id)
+            backend_job_ids.extend(
+                enqueue_process_image(image_path, per_image_tools, force=force)
+            )
 
     cluster_job_id = None
     if run_cluster:
@@ -140,7 +172,7 @@ def scan(
 
     click.echo(
         f"Queued {len(scan_job_ids)} directory scan job(s), "
-        f"{len(image_job_ids)} image job(s)."
+        f"{len(backend_job_ids)} backend job(s)."
     )
     if stats.discovered:
         click.echo(
@@ -149,7 +181,7 @@ def scan(
         )
     if cluster_job_id:
         click.echo(f"Cluster job enqueued: {cluster_job_id}")
-    if not scan_job_ids and not image_job_ids and not cluster_job_id:
+    if not scan_job_ids and not backend_job_ids and not cluster_job_id:
         click.echo("Nothing to enqueue.")
         sys.exit(0 if stats.discovered else 1)
 
@@ -271,11 +303,51 @@ def backends_cmd() -> None:
         click.echo(f"  {backend.name}: {status}")
 
 
+@main.command("tools")
+def tools_cmd() -> None:
+    """List all registered face tools and runtime availability."""
+    from meta_face.config import AGGREGATE_TOOLS, ANALYSIS_TOOLS, DETECTION_TOOLS, TOOL_GROUPS
+    from meta_face.tools.analysis.registry import list_analysis_tools, tool_availability
+
+    click.echo("Detection tools:")
+    for name in sorted(DETECTION_TOOLS):
+        click.echo(f"  {name}")
+    click.echo("\nAnalysis tools (require scrfd crops):")
+    for name in list_analysis_tools():
+        issue = tool_availability(name)
+        status = "available" if issue is None else "unavailable"
+        click.echo(f"  {name}: {status}")
+        if issue:
+            click.echo(f"    {issue}")
+    click.echo("\nAggregate tools:")
+    for name in sorted(AGGREGATE_TOOLS):
+        click.echo(f"  {name}")
+    click.echo("\nMeta-tool groups:")
+    for group, members in sorted(TOOL_GROUPS.items()):
+        click.echo(f"  {group}: {', '.join(members)}")
+
+
 @main.command("download")
 @click.option(
     "--backend",
-    type=click.Choice(["insightface", "dlib", "detectron2", "all"], case_sensitive=False),
-    default="insightface",
+    type=click.Choice(
+        [
+            "insightface",
+            "dlib",
+            "detectron2",
+            "opencv_fer",
+            "fer_plus",
+            "mediapipe",
+            "fairface",
+            "bisenet",
+            "yakhyo_gaze",
+            "face_antispoof_onnx",
+            "analysis",
+            "all",
+        ],
+        case_sensitive=False,
+    ),
+    default="all",
     show_default=True,
     help="Which backend model weights to download or verify.",
 )
@@ -300,11 +372,33 @@ def download(backend: str, model: str, force: bool) -> None:
     from meta_face.models import model_dir
 
     key = backend.lower()
+    if key in {"analysis", "opencv_fer", "fer_plus", "mediapipe", "fairface", "bisenet", "yakhyo_gaze", "face_antispoof_onnx"}:
+        from meta_face.analysis_models import download_all_analysis_models, download_analysis_model
+
+        if key == "analysis":
+            click.echo("Downloading/verifying analysis tool models...")
+            paths = download_all_analysis_models(force=force)
+            for name, path in paths.items():
+                click.echo(f"  {name}: {path}")
+            return
+        click.echo(f"Downloading {key} model...")
+        path = download_analysis_model(key, force=force)
+        click.echo(f"{key} model ready at {path}")
+        return
+
     if key == "all":
+        from meta_face.analysis_models import download_all_analysis_models
+
         click.echo("Downloading/verifying all backend models...")
         paths = download_all(insightface_model=model, force=force)
         for name, path in paths.items():
             click.echo(f"  {name}: {path}")
+        try:
+            analysis_paths = download_all_analysis_models(force=force)
+            for name, path in analysis_paths.items():
+                click.echo(f"  analysis/{name}: {path}")
+        except RuntimeError as exc:
+            click.echo(click.style(f"Some analysis models failed: {exc}", fg="yellow"), err=True)
         return
 
     if key == "dlib":
@@ -319,16 +413,22 @@ def download(backend: str, model: str, force: bool) -> None:
         return
 
     if key == "detectron2":
-        if is_detectron2_available() and not force:
-            from meta_face.config import DETECTRON2_CONFIG_PATH, DETECTRON2_WEIGHTS_PATH
+        from meta_face.config import DETECTRON2_MODEL_ZOO
+        from meta_face.detectron2_model import cached_model_zoo_weights_path, resolve_detectron2_model
 
-            click.echo(f"Detectron2 models already present:")
-            click.echo(f"  config:  {DETECTRON2_CONFIG_PATH}")
-            click.echo(f"  weights: {DETECTRON2_WEIGHTS_PATH}")
+        if is_detectron2_available() and not force:
+            paths = resolve_detectron2_model()
+            click.echo("Detectron2 models ready:")
+            if paths.model_zoo:
+                click.echo(f"  model_zoo: {paths.model_zoo}")
+            click.echo(f"  config:  {paths.config}")
+            click.echo(f"  weights: {paths.weights}")
             return
-        click.echo("Downloading Detectron2 config and weights...")
+        click.echo(f"Downloading Detectron2 model zoo weights ({DETECTRON2_MODEL_ZOO})...")
         path = download_detectron2_weights(force=force)
-        click.echo(f"Detectron2 weights ready at {path}")
+        click.echo(f"Detectron2 weights cached at {path}")
+        if path != cached_model_zoo_weights_path():
+            click.echo(f"  (model zoo cache: {cached_model_zoo_weights_path()})")
         return
 
     if is_available(model) and not force:

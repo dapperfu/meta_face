@@ -25,6 +25,13 @@ dependencies = [
     "pillow-heif>=0.16",
     "sidecar-rs @ git+https://github.com/dapperfu/sidecar-rs.git@v0.2.1",
     "tqdm>=4.66",
+    "jupyter>=1.0",
+    "nbconvert>=7.0",
+    "ipython>=8.0",
+    "ipykernel>=6.0",
+    "matplotlib>=3.8",
+    "pandas>=2.0",
+    "seaborn>=0.13",
 ]
 
 [project.scripts]
@@ -33,6 +40,37 @@ mf = "meta_face.cli:main"
 
 [project.optional-dependencies]
 detectron2 = [
+    "torch>=2.1",
+    "torchvision>=0.16",
+]
+emotion = [
+    "emotiefflib>=1.1.1",
+    "torch>=2.1",
+]
+expression = [
+    "emotiefflib>=1.1.1",
+    "mediapipe>=0.10.14",
+    "py-feat>=0.6",
+    "torch>=2.1",
+]
+gaze = [
+    "l2cs-nnet>=0.0.5",
+    "onnxruntime-gpu>=1.17",
+]
+attributes = [
+    "deepface>=0.0.93",
+    "tf-keras>=2.16",
+]
+liveness = [
+    "onnxruntime-gpu>=1.17",
+]
+all-tools = [
+    "emotiefflib>=1.1.1",
+    "mediapipe>=0.10.14",
+    "py-feat>=0.6",
+    "l2cs-nnet>=0.0.5",
+    "deepface>=0.0.93",
+    "tf-keras>=2.16",
     "torch>=2.1",
     "torchvision>=0.16",
 ]
