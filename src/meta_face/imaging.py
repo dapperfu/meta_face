@@ -46,3 +46,16 @@ def load_image(path: Path) -> np.ndarray:
             rgb = np.array(img.convert("RGB"))
         return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
     return image
+
+
+def save_image(path: Path, image: np.ndarray) -> None:
+    """Write a BGR uint8 image to disk (JPEG for HEIC sources when path ends in .jpg)."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    suffix = path.suffix.lower()
+    params: list[int] = []
+    if suffix in {".jpg", ".jpeg"}:
+        params = [cv2.IMWRITE_JPEG_QUALITY, 95]
+    ok = cv2.imwrite(str(path), image, params)
+    if not ok:
+        raise OSError(f"failed to write image: {path}")
