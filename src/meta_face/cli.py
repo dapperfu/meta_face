@@ -376,8 +376,16 @@ def download(backend: str, model: str, force: bool) -> None:
         from meta_face.analysis_models import download_all_analysis_models, download_analysis_model
 
         if key == "analysis":
+            from meta_face.analysis_models import AnalysisModelDownloadError
+
             click.echo("Downloading/verifying analysis tool models...")
-            paths = download_all_analysis_models(force=force)
+            try:
+                paths = download_all_analysis_models(force=force)
+            except AnalysisModelDownloadError as exc:
+                for name, path in exc.paths.items():
+                    click.echo(f"  {name}: {path}")
+                click.echo(click.style(str(exc), fg="yellow"), err=True)
+                raise SystemExit(1) from exc
             for name, path in paths.items():
                 click.echo(f"  {name}: {path}")
             return
@@ -393,11 +401,15 @@ def download(backend: str, model: str, force: bool) -> None:
         paths = download_all(insightface_model=model, force=force)
         for name, path in paths.items():
             click.echo(f"  {name}: {path}")
+        from meta_face.analysis_models import AnalysisModelDownloadError
+
         try:
             analysis_paths = download_all_analysis_models(force=force)
             for name, path in analysis_paths.items():
                 click.echo(f"  analysis/{name}: {path}")
-        except RuntimeError as exc:
+        except AnalysisModelDownloadError as exc:
+            for name, path in exc.paths.items():
+                click.echo(f"  analysis/{name}: {path}")
             click.echo(click.style(f"Some analysis models failed: {exc}", fg="yellow"), err=True)
         return
 

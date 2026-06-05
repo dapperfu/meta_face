@@ -74,6 +74,9 @@ all-tools = [
     "torch>=2.1",
     "torchvision>=0.16",
 ]
+all = [
+    "meta-face[detectron2,emotion,expression,gaze,attributes,liveness,dev]",
+]
 dev = [
     "pytest>=8.0",
     "ruff>=0.4",
