@@ -12,13 +12,14 @@ import hdbscan
 import numpy as np
 
 from meta_face.config import (
-    FAISS_INDEX_PATH,
-    FAISS_META_PATH,
+    cluster_tool_for_embedding,
     ensure_data_dir,
+    faiss_index_path,
+    faiss_meta_path,
     tool_data_key,
 )
 from meta_face.imaging import is_image_path
-from meta_face.sidecar import load_or_create, save, write_tool_result
+from meta_face.sidecar import load_or_create, update_sidecar, write_tool_result
 
 
 @dataclass
@@ -37,13 +38,18 @@ def _iter_sidecar_images(root: Path, recursive: bool = True) -> list[Path]:
     return sorted(p for p in root.iterdir() if p.is_file() and is_image_path(p))
 
 
-def collect_embeddings(root: Path, *, recursive: bool = True) -> tuple[np.ndarray, list[FaceRef]]:
+def collect_embeddings(
+    root: Path,
+    *,
+    embedding_tool: str = "arcface",
+    recursive: bool = True,
+) -> tuple[np.ndarray, list[FaceRef]]:
     refs: list[FaceRef] = []
     vectors: list[list[float]] = []
 
     for media_path in _iter_sidecar_images(root, recursive=recursive):
         doc, _ = load_or_create(media_path)
-        emb_key = tool_data_key("arcface", "embeddings")
+        emb_key = tool_data_key(embedding_tool, "embeddings")
         if emb_key not in doc:
             continue
         embeddings = doc[emb_key]
@@ -81,55 +87,88 @@ def run_hdbscan(embeddings: np.ndarray) -> np.ndarray:
     return clusterer.fit_predict(embeddings)
 
 
-def save_faiss_artifacts(index: faiss.Index, refs: list[FaceRef]) -> None:
+def save_faiss_artifacts(
+    index: faiss.Index,
+    refs: list[FaceRef],
+    *,
+    embedding_tool: str = "arcface",
+) -> None:
     ensure_data_dir()
-    faiss.write_index(index, str(FAISS_INDEX_PATH))
+    index_path = faiss_index_path(embedding_tool)
+    meta_path = faiss_meta_path(embedding_tool)
+    faiss.write_index(index, str(index_path))
     meta = [{"path": str(r.media_path), "face_index": r.face_index} for r in refs]
-    FAISS_META_PATH.write_text(json.dumps(meta, indent=2))
+    meta_path.write_text(json.dumps(meta, indent=2))
 
 
-def write_cluster_labels(refs: list[FaceRef], labels: np.ndarray) -> int:
-    """Write face.cluster.labels back into each image sidecar."""
+def write_cluster_labels(
+    refs: list[FaceRef],
+    labels: np.ndarray,
+    *,
+    embedding_tool: str = "arcface",
+) -> int:
+    """Write cluster labels back into each image sidecar."""
+    cluster_tool = cluster_tool_for_embedding(embedding_tool)
     by_image: dict[Path, dict[int, int]] = {}
     for ref, label in zip(refs, labels, strict=True):
         by_image.setdefault(ref.media_path, {})[ref.face_index] = int(label)
 
     updated = 0
     for media_path, index_labels in by_image.items():
-        doc, scar_path = load_or_create(media_path)
-        emb_key = tool_data_key("arcface", "embeddings")
-        if emb_key not in doc:
-            continue
-        embeddings = doc[emb_key]
-        if not isinstance(embeddings, list):
-            continue
-        cluster_labels = [-1] * len(embeddings)
-        for idx, label in index_labels.items():
-            if 0 <= idx < len(cluster_labels):
-                cluster_labels[idx] = label
-        write_tool_result(
-            doc,
-            "cluster",
-            {"labels": cluster_labels, "num_clusters": len(set(cluster_labels) - {-1})},
-        )
-        save(doc, scar_path)
-        updated += 1
+        emb_key = tool_data_key(embedding_tool, "embeddings")
+        wrote = False
+
+        def _patch(doc: object, *, labels: dict[int, int] = index_labels) -> None:
+            nonlocal wrote
+            if emb_key not in doc:  # type: ignore[operator]
+                return
+            embeddings = doc[emb_key]  # type: ignore[index]
+            if not isinstance(embeddings, list):
+                return
+            cluster_labels = [-1] * len(embeddings)
+            for idx, label in labels.items():
+                if 0 <= idx < len(cluster_labels):
+                    cluster_labels[idx] = label
+            write_tool_result(
+                doc,  # type: ignore[arg-type]
+                cluster_tool,
+                {
+                    "labels": cluster_labels,
+                    "num_clusters": len(set(cluster_labels) - {-1}),
+                },
+            )
+            wrote = True
+
+        update_sidecar(media_path, _patch)
+        if wrote:
+            updated += 1
     return updated
 
 
-def run_cluster_pipeline(root: Path, *, force: bool = False, recursive: bool = True) -> dict[str, Any]:
+def run_cluster_pipeline(
+    root: Path,
+    *,
+    force: bool = False,
+    embedding_tool: str = "arcface",
+    recursive: bool = True,
+) -> dict[str, Any]:
     root = root.resolve()
     _ = force  # reserved for future skip logic at pipeline level
 
-    embeddings, refs = collect_embeddings(root, recursive=recursive)
+    embeddings, refs = collect_embeddings(root, embedding_tool=embedding_tool, recursive=recursive)
     if embeddings.shape[0] == 0:
-        return {"status": "no_embeddings", "faces": 0, "updated_sidecars": 0}
+        return {
+            "status": "no_embeddings",
+            "faces": 0,
+            "updated_sidecars": 0,
+            "embedding_tool": embedding_tool,
+        }
 
     index = build_faiss_index(embeddings.copy())
-    save_faiss_artifacts(index, refs)
+    save_faiss_artifacts(index, refs, embedding_tool=embedding_tool)
 
     labels = run_hdbscan(embeddings)
-    updated = write_cluster_labels(refs, labels)
+    updated = write_cluster_labels(refs, labels, embedding_tool=embedding_tool)
 
     unique_clusters = len(set(int(x) for x in labels) - {-1})
     return {
@@ -138,5 +177,6 @@ def run_cluster_pipeline(root: Path, *, force: bool = False, recursive: bool = T
         "embedding_dim": int(embeddings.shape[1]),
         "clusters": unique_clusters,
         "updated_sidecars": updated,
-        "faiss_index": str(FAISS_INDEX_PATH),
+        "faiss_index": str(faiss_index_path(embedding_tool)),
+        "embedding_tool": embedding_tool,
     }
