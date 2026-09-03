@@ -28,8 +28,11 @@ Within each series, increment the second digit for each new focused notebook.
 |----------|-------------|
 | `01_annotate_overview.ipynb` | Original vs annotated side-by-side |
 | `02_face_crops_buffered.ipynb` | Per-face crops with bbox buffer % |
+| `03_face_attributes.ipynb` | Print all extracted face fields (age, gender, pose, landmarks) |
+| `04_face_metadata_crops.ipynb` | Full photo with face attributes beside it; buffered crops as detail view |
+| `05_directory_tool_review.ipynb` | Directory browser: all-tool overlays, complete per-face metadata, overlap and coverage analysis |
 
-Annotation notebooks load `face.scrfd.faces` from the sibling `.scar` sidecar by default (no GPU inference). Set `FORCE_DETECT = True` in the user-input cell to re-run SCRFD. If no sidecar exists, run `mf scan IMAGE_PATH --tools scrfd` first or enable `FORCE_DETECT`.
+Annotation notebooks load `face.scrfd.faces` from the sibling `.scar` sidecar by default (no GPU inference). Sidecars written by `mf scan` include bbox, landmarks, det_score, age, gender, pose, and dense landmarks. Set `FORCE_DETECT = True` to re-run SCRFD. If no sidecar exists, run `mf scan IMAGE_PATH --tools scrfd` first or enable `FORCE_DETECT`.
 
 Default test image (7 faces):
 
@@ -57,3 +60,17 @@ ROOT = Path("/tun/steph_pictures")        # full 2000s tree
 ```
 
 Meta-analysis notebooks import `meta_face.analysis` and read `.scar` files in parallel.
+
+## All-tool directory review
+
+Open `05_directory_tool_review.ipynb` with the `venv_meta_face` kernel. Set `ROOT`
+to a directory of images and sibling `.scar` files and run all cells. No GPU or
+model inference is needed. Change `IMAGE_INDEX` and rerun sections 2–3 to browse;
+change `FACE_INDEX` to inspect one face crop and spatially overlapping results.
+`TOOLS` optionally filters the overlay. Every tool has a consistent color.
+
+Complete saved metadata is expandable, including vectors and tool-level fields.
+Missing/corrupt sidecars and orphan sidecars appear in the inventory. Analysis
+boxes inherited from a detector are dashed and flagged in overlap tables; they
+are not independent detections. Unknown geometry is retained as metadata.
+Set `EXPORT_DIR` to save the selected overlay, full metadata, and CSV tables.
