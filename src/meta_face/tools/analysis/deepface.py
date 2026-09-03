@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import gc
+import logging
+import os
 from typing import Any
 
 from meta_face.coordinates import to_normalized
@@ -12,9 +15,66 @@ TOOL_NAME = "deepface"
 TOOL_VERSION = "2.0.0"
 MODEL_NAME = "deepface"
 
+logger = logging.getLogger(__name__)
+
 
 def availability() -> str | None:
     return provider_issue(TOOL_NAME)
+
+
+def _configure_tensorflow_gpu() -> None:
+    """Keep TF from grabbing the whole GPU before DeepFace builds its graphs."""
+    os.environ.setdefault("TF_FORCE_GPU_ALLOW_GROWTH", "true")
+    try:
+        import tensorflow as tf
+    except ImportError:
+        return
+    try:
+        for gpu in tf.config.list_physical_devices("GPU"):
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except (RuntimeError, ValueError):
+        return
+
+
+def _is_gpu_oom(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return any(
+        token in text
+        for token in (
+            "failed to allocate memory",
+            "out of memory",
+            "resource exhausted",
+            "oom when allocating",
+        )
+    )
+
+
+def _release_gpu() -> None:
+    gc.collect()
+    try:
+        import tensorflow as tf
+
+        tf.keras.backend.clear_session()
+    except (ImportError, AttributeError, RuntimeError):
+        pass
+    try:
+        import torch
+
+        if torch.cuda.is_initialized():
+            torch.cuda.empty_cache()
+    except (ImportError, AttributeError, RuntimeError):
+        pass
+
+
+def _call_with_oom_retry(operation: Any) -> Any:
+    try:
+        return operation()
+    except Exception as exc:
+        if not _is_gpu_oom(exc):
+            raise
+        logger.warning("DeepFace GPU OOM; releasing GPU memory and retrying once")
+        _release_gpu()
+        return operation()
 
 
 def _crop_coordinates(result: dict[str, Any], crop: Any) -> dict[str, Any]:
@@ -34,6 +94,7 @@ def analyze_faces(image_bgr: Any, faces: list[FaceContext]) -> dict[str, Any]:
     operations = options.get("operations", ["detect", "represent", "analyze"])
     if set(operations) - {"detect", "represent", "analyze", "liveness"}:
         raise ValueError("DeepFace photo operations: detect, represent, analyze, liveness")
+    _configure_tensorflow_gpu()
     sdk = SDKSession(TOOL_NAME)
     detection = dict(options.get("extract_faces", {}))
     detection.update(color_face="bgr", normalize_face=False)
@@ -41,7 +102,9 @@ def analyze_faces(image_bgr: Any, faces: list[FaceContext]) -> dict[str, Any]:
     if "liveness" in operations:
         detection["anti_spoofing"] = True
     try:
-        extracted = sdk.call("extract_faces", img_path=image_bgr, **detection)
+        extracted = _call_with_oom_retry(
+            lambda: sdk.call("extract_faces", img_path=image_bgr, **detection)
+        )
     except ValueError as exc:
         if "Face could not be detected" not in str(exc):
             raise
@@ -59,7 +122,9 @@ def analyze_faces(image_bgr: Any, faces: list[FaceContext]) -> dict[str, Any]:
         if "represent" in operations:
             kwargs = dict(options.get("represent", {}))
             kwargs.update(detector_backend="skip", align=False)
-            represented = sdk.call("represent", img_path=crop, **kwargs)
+            represented = _call_with_oom_retry(
+                lambda: sdk.call("represent", img_path=crop, **kwargs)
+            )
             record["representations"] = [_crop_coordinates(item, crop) for item in represented]
             if represented:
                 record["embedding"] = represented[0]["embedding"]
@@ -67,7 +132,9 @@ def analyze_faces(image_bgr: Any, faces: list[FaceContext]) -> dict[str, Any]:
             kwargs = dict(options.get("analyze", {}))
             kwargs.update(detector_backend="skip", align=False)
             kwargs.setdefault("silent", True)
-            analyzed = sdk.call("analyze", img_path=crop, **kwargs)
+            analyzed = _call_with_oom_retry(
+                lambda: sdk.call("analyze", img_path=crop, **kwargs)
+            )
             attributes = analyzed[0] if isinstance(analyzed, list) and analyzed else analyzed
             record["attributes"] = _crop_coordinates(attributes, crop) if isinstance(attributes, dict) else attributes
             if isinstance(attributes, dict):

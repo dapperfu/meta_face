@@ -10,6 +10,7 @@ drop the detector, embeddings, or the other heads. Failed heads are stored as
 from __future__ import annotations
 
 import gc
+import inspect
 import logging
 from typing import Any
 
@@ -45,6 +46,8 @@ def _is_gpu_oom(exc: BaseException) -> bool:
             "out of memory",
             "cuda_error_out_of_memory",
             "cublas_status_alloc_failed",
+            "cublas failure",
+            "resource allocation failed",
         )
     )
 
@@ -70,8 +73,9 @@ def _release_cuda() -> None:
 
 
 def _drop(model: Any) -> None:
-    if hasattr(model, "session"):
-        model.session = None
+    for attr in ("session", "model"):
+        if hasattr(model, attr):
+            setattr(model, attr, None)
     _release_cuda()
 
 
@@ -79,13 +83,34 @@ def _error_payload(exc: BaseException) -> dict[str, str]:
     return {"error": f"{type(exc).__name__}: {exc}"}
 
 
+def _accepts_kwarg(target: Any, name: str) -> bool:
+    try:
+        signature = inspect.signature(target)
+    except (TypeError, ValueError):
+        return False
+    parameters = signature.parameters
+    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters.values()):
+        return True
+    return name in parameters
+
+
 def _build_component(sdk: SDKSession, spec: str | dict[str, Any]) -> Any:
-    """Construct a UniFace class on CUDA only (no CPUExecutionProvider fallback)."""
+    """Construct a UniFace class on CUDA when the constructor accepts providers.
+
+    TorchScript heads such as Emotion do not take ``providers``; injecting it
+    raises TypeError and aborts the rest of the photo pipeline.
+    """
     if isinstance(spec, str):
-        return sdk.call(spec, providers=list(ONNX_PROVIDERS))
-    kwargs = dict(sdk.resolve(spec.get("kwargs", {})))
-    kwargs.setdefault("providers", list(ONNX_PROVIDERS))
-    return sdk.call(spec["class"], **kwargs)
+        class_name = spec
+        kwargs: dict[str, Any] = {}
+    else:
+        class_name = spec["class"]
+        kwargs = dict(sdk.resolve(spec.get("kwargs", {})))
+    if _accepts_kwarg(sdk.get(class_name), "providers"):
+        kwargs.setdefault("providers", list(ONNX_PROVIDERS))
+    else:
+        kwargs.pop("providers", None)
+    return sdk.call(class_name, **kwargs)
 
 
 def _run_named_analysis(name: str, model: Any, image_bgr: Any, face: Any, calls: dict[str, Any]) -> Any:
@@ -144,7 +169,9 @@ def analyze_faces(image_bgr: Any, faces: list[FaceContext]) -> dict[str, Any]:
 
     detector = _call_with_oom_retry(lambda: _build_component(sdk, options.get("detector", "SCRFD")))
     detector_class = type(detector).__name__
-    detections = detector.detect(image_bgr, **calls.get("detect", {}))
+    detections = _call_with_oom_retry(
+        lambda: detector.detect(image_bgr, **calls.get("detect", {}))
+    )
     _drop(detector)
     detector = None
 

@@ -288,6 +288,119 @@ def test_uniface_skips_empty_headpose_crop(monkeypatch):
     assert output["failed_analyses"] == ["HeadPose"]
 
 
+def test_uniface_skips_providers_for_torch_emotion(monkeypatch):
+    @dataclasses.dataclass
+    class Face:
+        bbox: np.ndarray
+        landmarks: np.ndarray
+        confidence: float = .99
+
+    image = np.zeros((100, 200, 3), dtype=np.uint8)
+    face = Face(np.array([20, 10, 60, 40]), np.array([[25, 15], [50, 15]]))
+    received: dict[str, object] = {}
+
+    class Emotion:
+        def __init__(self, *, model_name="affecnet7"):
+            received["emotion"] = model_name
+
+        def predict(self, image_bgr, detected, **kwargs):
+            return {"emotion": "Happy"}
+
+    class SCRFD:
+        def __init__(self, *, providers=None, **kwargs):
+            received["scrfd_providers"] = providers
+
+        def detect(self, image_bgr, **kwargs):
+            return [face]
+
+    class ArcFace:
+        def __init__(self, *, providers=None, **kwargs):
+            received["arcface_providers"] = providers
+
+        def get_normalized_embedding(self, image_bgr, landmarks):
+            return np.array([.1, .2])
+
+    module = ModuleType("uniface")
+    module.Emotion = Emotion
+    module.SCRFD = SCRFD
+    module.ArcFace = ArcFace
+    fake_provider(monkeypatch, "uniface", module)
+    monkeypatch.setenv("META_FACE_UNIFACE_OPTIONS", json.dumps({"analyses": ["Emotion"]}))
+    output = uniface.analyze_faces(image, [])
+    assert received["emotion"] == "affecnet7"
+    assert received["scrfd_providers"] == ["CUDAExecutionProvider"]
+    assert received["arcface_providers"] == ["CUDAExecutionProvider"]
+    assert output["faces"][0]["analyses"]["Emotion"] == {"emotion": "Happy"}
+
+
+def test_uniface_retries_detector_after_cublas_oom(monkeypatch):
+    @dataclasses.dataclass
+    class Face:
+        bbox: np.ndarray
+        landmarks: np.ndarray
+        confidence: float = .99
+
+    image = np.zeros((100, 200, 3), dtype=np.uint8)
+    face = Face(np.array([20, 10, 60, 40]), np.array([[25, 15], [50, 15]]))
+    calls = {"detect": 0}
+
+    class Detector:
+        def detect(self, image_bgr, **kwargs):
+            calls["detect"] += 1
+            if calls["detect"] == 1:
+                raise RuntimeError(
+                    "CUBLAS failure 3: the resource allocation failed ; GPU=0"
+                )
+            return [face]
+
+    detector = Detector()
+    recognizer = SimpleNamespace(
+        get_normalized_embedding=lambda bgr, landmarks: np.array([.6, .8])
+    )
+
+    def build(_sdk, spec):
+        if spec == "SCRFD":
+            return detector
+        if spec == "ArcFace":
+            return recognizer
+        return SimpleNamespace(predict=lambda *args, **kwargs: {"age": 34})
+
+    monkeypatch.setattr(uniface, "_build_component", build)
+    monkeypatch.setenv("META_FACE_UNIFACE_OPTIONS", json.dumps({"analyses": ["AgeGender"]}))
+    output = uniface.analyze_faces(image, [])
+    assert calls["detect"] == 2
+    assert output["faces"][0]["analyses"]["AgeGender"] == {"age": 34}
+
+
+def test_deepface_retries_analyze_after_gpu_oom(monkeypatch):
+    image = np.full((100, 200, 3), [1, 2, 3], dtype=np.uint8)
+    crop = image[10:30, 20:60].copy()
+    module = ModuleType("deepface.DeepFace")
+    calls = {"analyze": 0}
+
+    def extract_faces(img_path, color_face, normalize_face, enforce_detection):
+        return [{"face": crop, "facial_area": {"x": 20, "y": 10, "w": 40, "h": 20}}]
+
+    def represent(img_path, detector_backend, align):
+        return [{"embedding": [.1, .2], "facial_area": {"x": 0, "y": 0, "w": 40, "h": 20}}]
+
+    def analyze(img_path, detector_backend, align, silent):
+        calls["analyze"] += 1
+        if calls["analyze"] == 1:
+            raise RuntimeError(
+                "{{function_node __wrapped__AddV2_device_/job:localhost/replica:0/"
+                "task:0/device:GPU:0}} failed to allocate memory [Op:AddV2]"
+            )
+        return [{"age": 25, "region": {"x": 0, "y": 0, "w": 40, "h": 20}}]
+
+    module.extract_faces, module.represent, module.analyze = extract_faces, represent, analyze
+    fake_provider(monkeypatch, "deepface", module)
+    monkeypatch.setattr(deepface, "_configure_tensorflow_gpu", lambda: None)
+    payload = deepface.analyze_faces(image, [])
+    assert calls["analyze"] == 2
+    assert payload["faces"][0]["age"] == 25
+
+
 def test_independent_sdk_tools_do_not_require_scrfd(monkeypatch):
     from meta_face.deps import require_inference_runtime
     from meta_face.scanner import resolve_per_image_tools
