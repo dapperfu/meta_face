@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from meta_face.config import INSIGHTFACE_CTX_ID, INSIGHTFACE_MODEL, INSIGHTFACE_ROOT
+from meta_face.config import INSIGHTFACE_CTX_ID, INSIGHTFACE_MODEL, INSIGHTFACE_ROOT, ONNX_PROVIDERS
 
 
 @lru_cache(maxsize=1)
@@ -17,7 +17,7 @@ def get_face_app():
     app = FaceAnalysis(
         name=INSIGHTFACE_MODEL,
         root=INSIGHTFACE_ROOT,
-        providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+        providers=list(ONNX_PROVIDERS),
     )
     app.prepare(ctx_id=INSIGHTFACE_CTX_ID, det_size=(640, 640))
     return app

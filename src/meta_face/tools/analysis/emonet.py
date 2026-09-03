@@ -31,7 +31,7 @@ def availability() -> str | None:
     except ImportError:
         return (
             "EmoNet is not installed. Install optional extras: "
-            "pip install -e '.[emotion]'  # requires emonet package"
+            "pip install -e '.[dev]'  # also requires the emonet package"
         )
     try:
         _get_model()

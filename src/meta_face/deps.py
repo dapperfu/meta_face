@@ -25,18 +25,18 @@ def require_insightface_runtime() -> None:
         import onnxruntime as ort
     except ImportError:
         raise PipelineDependencyError(
-            "onnxruntime is not installed. Install the project with GPU extras: "
-            "pip install -e '.[dev]' or pip install onnxruntime-gpu>=1.17"
+            "onnxruntime-gpu is not installed. Install: pip install -e '.[dev]' "
+            "or pip install 'onnxruntime-gpu[cuda,cudnn]>=1.17'"
         ) from None
 
     if not hasattr(ort, "InferenceSession"):
         module_path = getattr(ort, "__file__", "unknown")
         raise PipelineDependencyError(
-            "onnxruntime is installed but unusable (missing InferenceSession). "
+            "onnxruntime-gpu is installed but unusable (missing InferenceSession). "
             f"Loaded module: {module_path}. "
             "Check for a local file named onnxruntime.py shadowing the package, "
-            "then reinstall: pip uninstall -y onnxruntime onnxruntime-gpu && "
-            "pip install onnxruntime-gpu>=1.17"
+            "then reinstall: pip uninstall -y onnxruntime && "
+            "pip install 'onnxruntime-gpu[cuda,cudnn]>=1.17'"
         ) from None
 
     try:

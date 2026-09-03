@@ -20,24 +20,21 @@ EMOTION_LABELS = FER_PLUS_LABELS
 
 @lru_cache(maxsize=1)
 def _get_session():
-    import onnxruntime as ort
+    from meta_face.onnx_runtime import inference_session
 
     model_path = fer_plus_model_path()
     if not model_path.is_file():
         raise FileNotFoundError(
             f"FER+ ONNX model missing at {model_path}. Run: mf download --backend fer_plus"
         )
-    return ort.InferenceSession(
-        str(model_path),
-        providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-    )
+    return inference_session(model_path)
 
 
 def availability() -> str | None:
     try:
         import onnxruntime  # noqa: F401
     except ImportError:
-        return "onnxruntime is required for fer_plus (included in base install)."
+        return "onnxruntime-gpu is required for fer_plus (included in the base install)."
     try:
         _get_session()
     except FileNotFoundError as exc:

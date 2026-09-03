@@ -67,7 +67,7 @@ def provider_version(name: str) -> str | None:
 
 def provider_issue(name: str) -> str | None:
     if provider_version(name) is None:
-        return f"{name} is not installed. Install: pip install -e '.[sdk-tools]'"
+        return f"{name} is not installed. Install: pip install -e '.[dev]'"
     return None
 
 
@@ -139,7 +139,7 @@ class SDKSession:
             except ImportError as exc:
                 raise ImportError(
                     f"Cannot import {self.provider}: {exc}. "
-                    "Install its dependencies with pip install -e '.[sdk-tools]'."
+                    "Install its dependencies with pip install -e '.[dev]'."
                 ) from exc
         return self._module
 

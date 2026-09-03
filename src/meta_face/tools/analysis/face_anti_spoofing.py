@@ -20,7 +20,7 @@ def availability() -> str | None:
         return (
             "face-anti-spoofing is not installed. Clone "
             "https://github.com/minivision-ai/Silent-Face-Anti-Spoofing and install, "
-            "or use pip install -e '.[liveness]' when packaged."
+            "or pip install -e '.[dev]' when packaged."
         )
     return None
 

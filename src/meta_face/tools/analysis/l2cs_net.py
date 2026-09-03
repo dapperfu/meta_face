@@ -24,7 +24,7 @@ def _get_gaze():
         return Pipeline(weights=None, arch="ResNet50", device=device)
     except ImportError:
         raise ImportError(
-            "l2cs is not installed. Install optional extras: pip install -e '.[gaze]'"
+            "l2cs is not installed. Install: pip install -e '.[dev]'"
         ) from None
 
 

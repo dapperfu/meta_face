@@ -322,7 +322,7 @@ def main():
                                  rows[a["index"]-1]["sha256"]==rows[b["index"]-1]["sha256"]))
     write_csv(OUT/"similar_frames.csv",near)
     versions={}
-    for pkg in ["numpy","pillow","onnxruntime","insightface","dlib","mediapipe","py-feat","emotiefflib","sidecar-rs"]:
+    for pkg in ["numpy","pillow","onnxruntime-gpu","insightface","dlib","mediapipe","py-feat","emotiefflib","sidecar-rs"]:
         try: versions[pkg]=metadata.version(pkg)
         except metadata.PackageNotFoundError: versions[pkg]=None
     summary=dict(generated_at=datetime.now(timezone.utc).isoformat(),image_count=len(rows),

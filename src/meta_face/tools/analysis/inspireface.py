@@ -21,7 +21,7 @@ def _get_session():
     except ImportError as exc:
         raise ImportError(
             "InspireFace Python bindings are not installed. "
-            "Install optional extras: pip install -e '.[all-tools]'"
+            "Install: pip install -e '.[dev]'"
         ) from exc
     isf.launch(use_cuda=True)
     return isf

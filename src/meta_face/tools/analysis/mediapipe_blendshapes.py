@@ -55,7 +55,7 @@ def availability() -> str | None:
     except ImportError:
         return (
             "mediapipe is not installed. Install optional extras: "
-            "pip install -e '.[expression]'"
+            "pip install -e '.[dev]'"
         )
     try:
         _get_landmarker()

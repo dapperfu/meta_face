@@ -28,6 +28,7 @@ import numpy as np
 import onnxruntime as ort
 from PIL import ExifTags, Image, ImageOps
 
+from meta_face.config import INSIGHTFACE_CTX_ID, ONNX_PROVIDERS
 from meta_face.imaging import load_image
 from meta_face.sidecar import update_sidecar, write_tool_result
 from meta_face.tools.sidecar_encode import json_safe
@@ -57,7 +58,7 @@ def session_options():
 
 def session(name):
     return ort.InferenceSession(str(ANALYSIS_ROOT / name), sess_options=session_options(),
-                               providers=["CPUExecutionProvider"])
+                               providers=list(ONNX_PROVIDERS))
 
 
 def sha256(path):
@@ -323,11 +324,11 @@ def detection_phase(paths, force):
     for key, filename in [("det", "det_10g.onnx"), ("2d", "2d106det.onnx"),
                           ("3d", "1k3d68.onnx")]:
         models[key] = get_model(str(MODEL_ROOT / filename), sess_options=session_options(),
-                                providers=["CPUExecutionProvider"])
+                                providers=list(ONNX_PROVIDERS))
         if key != "det":
-            models[key].prepare(ctx_id=-1)
+            models[key].prepare(ctx_id=INSIGHTFACE_CTX_ID)
     status = {"scrfd": "ready", "dlib_detect": "pending",
-              "device": "CPU", "onnx_providers": ort.get_available_providers()}
+              "device": "CUDA", "onnx_providers": list(ONNX_PROVIDERS)}
     save_json(OUT / "detection_runtime.json", status)
     for n, path in enumerate(paths, 1):
         target = OUT / "detections" / f"{path.stem}.json"
@@ -342,7 +343,7 @@ def detection_phase(paths, force):
                    tools={}, errors={}, timings={})
         for size in (640, 1280):
             t = time.perf_counter()
-            models["det"].prepare(ctx_id=-1, input_size=(size, size), det_thresh=0.5)
+            models["det"].prepare(ctx_id=INSIGHTFACE_CTX_ID, input_size=(size, size), det_thresh=0.5)
             boxes, kps = models["det"].detect(image)
             faces = []
             # Stable image-local numbering; no cross-photo identity association.

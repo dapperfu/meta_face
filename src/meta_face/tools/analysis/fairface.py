@@ -28,7 +28,7 @@ RACE_LABELS = (
 
 @lru_cache(maxsize=1)
 def _get_session():
-    import onnxruntime as ort
+    from meta_face.onnx_runtime import inference_session
 
     model_path = fairface_model_path()
     if not model_path.is_file():
@@ -36,10 +36,7 @@ def _get_session():
             f"FairFace ONNX model missing at {model_path}. "
             "Run: mf download --backend fairface"
         )
-    return ort.InferenceSession(
-        str(model_path),
-        providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-    )
+    return inference_session(model_path)
 
 
 def availability() -> str | None:

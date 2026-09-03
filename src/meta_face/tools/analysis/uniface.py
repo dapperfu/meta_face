@@ -47,7 +47,7 @@ def availability() -> str | None:
     issue = provider_issue(TOOL_NAME)
     installed = provider_version(TOOL_NAME)
     if issue is None and installed and int(installed.split(".")[0]) < 4:
-        return "UniFace 4 is required. Install: pip install -e '.[uniface]'"
+        return "UniFace 4 is required. Install: pip install -e '.[dev]'"
     return issue
 
 

@@ -28,7 +28,7 @@ def availability() -> str | None:
     except ImportError:
         return (
             "emotiefflib is not installed. Install optional extras: "
-            "pip install -e '.[emotion]'"
+            "pip install -e '.[dev]'"
         )
     try:
         _get_recognizer()

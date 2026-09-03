@@ -17,7 +17,7 @@ def availability() -> str | None:
     except ImportError:
         return (
             "libreface is not installed. Install optional extras: "
-            "pip install -e '.[expression]'  # requires LibreFace package"
+            "pip install -e '.[dev]'  # also requires the LibreFace package"
         )
     return None
 

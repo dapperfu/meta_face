@@ -17,7 +17,7 @@ def availability() -> str | None:
     except ImportError:
         return (
             "OpenFace 3.0 Python bindings are not installed. Install optional extras: "
-            "pip install -e '.[expression]'  # requires openface package from OpenFace 3.0"
+            "pip install -e '.[dev]'  # also requires OpenFace 3.0 Python bindings"
         )
     return None
 

@@ -124,6 +124,8 @@ INSIGHTFACE_ROOT: str = os.environ.get(
     "META_FACE_INSIGHTFACE_ROOT",
     str(Path.home() / ".insightface"),
 )
+# ONNX Runtime: CUDA only. Never list CPUExecutionProvider or the CPU pip package.
+ONNX_PROVIDERS: tuple[str, ...] = ("CUDAExecutionProvider",)
 
 # face_recognition / dlib (CPU-oriented, deprecated but supported).
 DLIB_MODEL: str = os.environ.get("META_FACE_DLIB_MODEL", "hog")

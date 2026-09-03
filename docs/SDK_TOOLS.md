@@ -3,14 +3,14 @@
 The three SDKs run as independent image pipelines in `mf scan`. Their public Python APIs are also accessible through `mf sdk`, including operations requiring several images, a database, video or persistent state.
 
 ```bash
-pip install -e '.[sdk-tools]'
+pip install -e '.[dev]'
 mf sdk list deepface
 mf sdk list uniface
 mf sdk list py_feat
 mf scan /photos --tools deepface,uniface,py_feat --run-now
 ```
 
-The extra selects DeepFace 0.0.100+, UniFace 4.x and Py-Feat 2.1.1+. The inherited Py-Feat 0.6 API remains supported, but lacks newer capabilities. Upstream SDKs manage their model downloads. Listing the catalog does not import or initialize models.
+`pip install -e '.[dev]'` installs DeepFace 0.0.100+, UniFace 4.x, Py-Feat 2.1.1+, and the rest of the analysis packages. The inherited Py-Feat 0.6 API remains supported, but lacks newer capabilities. Upstream SDKs manage their model downloads. Listing the catalog does not import or initialize models.
 
 | SDK | Photo pipeline | Additional public API access |
 |---|---|---|
@@ -88,7 +88,7 @@ Use recipes for arbitrary independent detection/alignment settings on each DeepF
 UniFace defaults to SCRFD, ArcFace and all 13 photo analysis heads. An empty `analyses` list leaves detection/recognition; `recognizer: null` disables recognition. Constructor options go in detector/recognizer specs or `models`; inference options go in `calls`, keyed by `detect` or the analysis class name.
 
 ```bash
-export META_FACE_UNIFACE_OPTIONS='{"detector":{"class":"SCRFD","kwargs":{"input_size":{"$tuple":[1280,1280]},"providers":["CPUExecutionProvider"]}},"recognizer":{"class":"AdaFace","kwargs":{"model_name":{"$symbol":"constants.AdaFaceWeights.IR_101"}}},"analyses":["Landmark106","EDifFIQA","HeadPose"],"models":{"EDifFIQA":{"providers":["CPUExecutionProvider"]}}}'
+export META_FACE_UNIFACE_OPTIONS='{"detector":{"class":"SCRFD","kwargs":{"input_size":{"$tuple":[1280,1280]},"providers":["CUDAExecutionProvider"]}},"recognizer":{"class":"AdaFace","kwargs":{"model_name":{"$symbol":"constants.AdaFaceWeights.IR_101"}}},"analyses":["Landmark106","EDifFIQA","HeadPose"],"models":{"EDifFIQA":{"providers":["CUDAExecutionProvider"]}}}'
 ```
 
 Each head receives its documented image/crop/box/landmark inputs. Failures propagate. Complete masks can make sidecars large, so select the analyses needed. Tracking/search and image-wide matting/anonymization are available through recipes.

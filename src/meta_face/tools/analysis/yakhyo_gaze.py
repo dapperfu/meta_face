@@ -16,7 +16,7 @@ MODEL_NAME = "yakhyo_gaze"
 
 @lru_cache(maxsize=1)
 def _get_session():
-    import onnxruntime as ort
+    from meta_face.onnx_runtime import inference_session
 
     model_path = yakhyo_gaze_model_path()
     if not model_path.is_file():
@@ -24,17 +24,14 @@ def _get_session():
             f"yakhyo gaze ONNX model missing at {model_path}. "
             "Run: mf download --backend yakhyo_gaze"
         )
-    return ort.InferenceSession(
-        str(model_path),
-        providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-    )
+    return inference_session(model_path)
 
 
 def availability() -> str | None:
     try:
         import onnxruntime  # noqa: F401
     except ImportError:
-        return "onnxruntime is required for yakhyo_gaze."
+        return "onnxruntime-gpu is required for yakhyo_gaze."
     try:
         _get_session()
     except FileNotFoundError as exc:

@@ -24,7 +24,7 @@ MODEL_NAME = "face_antispoof_onnx"
 
 @lru_cache(maxsize=1)
 def _get_session():
-    import onnxruntime as ort
+    from meta_face.onnx_runtime import inference_session
 
     model_path = face_antispoof_onnx_model_path()
     if not model_path.is_file():
@@ -32,10 +32,7 @@ def _get_session():
             f"face-antispoof ONNX model missing at {model_path}. "
             "Run: mf download --backend face_antispoof_onnx"
         )
-    return ort.InferenceSession(
-        str(model_path),
-        providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-    )
+    return inference_session(model_path)
 
 
 def availability() -> str | None:
