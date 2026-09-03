@@ -6,6 +6,7 @@ import ctypes
 import json
 import os
 import subprocess
+import time
 from importlib.metadata import distribution
 
 from meta_face.tools.registry import (
