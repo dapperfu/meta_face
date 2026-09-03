@@ -196,11 +196,96 @@ def test_uniface_each_analysis_uses_its_documented_input(name, monkeypatch):
     model = SimpleNamespace(**{method: call})
     detector = SimpleNamespace(detect=lambda bgr: [face])
     recognizer = SimpleNamespace(get_normalized_embedding=lambda bgr, landmarks: np.array([.6, .8]))
-    monkeypatch.setattr(uniface, "_get_models", lambda _: (detector, recognizer, {name: model}))
-    monkeypatch.delenv("META_FACE_UNIFACE_OPTIONS", raising=False)
+
+    def build(_sdk, spec):
+        if spec == "SCRFD":
+            return detector
+        if spec == "ArcFace":
+            return recognizer
+        return model
+
+    monkeypatch.setattr(uniface, "_build_component", build)
+    monkeypatch.setenv("META_FACE_UNIFACE_OPTIONS", json.dumps({"analyses": [name]}))
     output = uniface.analyze_faces(image, [])
     assert output["faces"][0]["analyses"][name] == {"retained": [1, 2]}
     assert output["faces"][0]["embedding"] == [.6, .8]
+
+
+def test_uniface_records_head_oom_and_keeps_other_heads(monkeypatch):
+    @dataclasses.dataclass
+    class Face:
+        bbox: np.ndarray
+        landmarks: np.ndarray
+        confidence: float = .99
+
+    image = np.zeros((100, 200, 3), dtype=np.uint8)
+    face = Face(np.array([20, 10, 60, 40]), np.array([[25, 15], [50, 15]]))
+    oom = RuntimeError(
+        "[ONNXRuntimeError] : 1 : FAIL : Failed to allocate memory for requested "
+        "buffer of size 9669120"
+    )
+
+    class HeadPose:
+        def estimate(self, crop, **kwargs):
+            raise oom
+
+    class AgeGender:
+        def predict(self, image_bgr, detected, **kwargs):
+            return {"age": 34}
+
+    detector = SimpleNamespace(detect=lambda bgr: [face])
+    recognizer = SimpleNamespace(
+        get_normalized_embedding=lambda bgr, landmarks: np.array([.6, .8])
+    )
+
+    def build(_sdk, spec):
+        if spec == "SCRFD":
+            return detector
+        if spec == "ArcFace":
+            return recognizer
+        if spec["class"] == "HeadPose":
+            return HeadPose()
+        if spec["class"] == "AgeGender":
+            return AgeGender()
+        raise AssertionError(spec)
+
+    monkeypatch.setattr(uniface, "_build_component", build)
+    monkeypatch.setenv(
+        "META_FACE_UNIFACE_OPTIONS",
+        json.dumps({"analyses": ["AgeGender", "HeadPose"]}),
+    )
+    output = uniface.analyze_faces(image, [])
+    analyses = output["faces"][0]["analyses"]
+    assert analyses["AgeGender"] == {"age": 34}
+    assert "Failed to allocate memory" in analyses["HeadPose"]["error"]
+    assert output["failed_analyses"] == ["HeadPose"]
+    assert output["faces"][0]["embedding"] == [.6, .8]
+
+
+def test_uniface_skips_empty_headpose_crop(monkeypatch):
+    @dataclasses.dataclass
+    class Face:
+        bbox: np.ndarray
+        landmarks: np.ndarray
+        confidence: float = .99
+
+    image = np.zeros((100, 200, 3), dtype=np.uint8)
+    face = Face(np.array([0, 0, 0, 0]), np.array([[0, 0]]))
+    detector = SimpleNamespace(detect=lambda bgr: [face])
+    recognizer = SimpleNamespace(get_normalized_embedding=lambda bgr, landmarks: np.array([.1]))
+
+    def build(_sdk, spec):
+        if spec == "SCRFD":
+            return detector
+        if spec == "ArcFace":
+            return recognizer
+        return SimpleNamespace(estimate=lambda *args, **kwargs: pytest.fail("should not run"))
+
+    monkeypatch.setattr(uniface, "_build_component", build)
+    monkeypatch.setenv("META_FACE_UNIFACE_OPTIONS", json.dumps({"analyses": ["HeadPose"]}))
+    output = uniface.analyze_faces(image, [])
+    assert "empty" in output["faces"][0]["analyses"]["HeadPose"]["error"]
+    assert output["failed_analyses"] == ["HeadPose"]
 
 
 def test_independent_sdk_tools_do_not_require_scrfd(monkeypatch):
