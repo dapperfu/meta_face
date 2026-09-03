@@ -1,0 +1,33 @@
+{
+  "steps": [
+    {
+      "id": "detector",
+      "call": "SCRFD"
+    },
+    {
+      "id": "faces",
+      "call": "$detector.detect",
+      "args": [
+        {
+          "$image": "/photos/team.jpg"
+        }
+      ]
+    },
+    {
+      "id": "blur",
+      "call": "BlurFace"
+    },
+    {
+      "id": "image",
+      "call": "$blur.anonymize",
+      "args": [
+        {
+          "$image": "/photos/team.jpg"
+        },
+        {
+          "$ref": "faces"
+        }
+      ]
+    }
+  ]
+}

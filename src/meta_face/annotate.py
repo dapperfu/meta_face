@@ -12,8 +12,7 @@ import numpy as np
 from meta_face.config import ANNOTATE_OUTPUT_SUFFIX
 from meta_face.imaging import is_image_path, load_image, save_image
 from meta_face.sidecar import get_face_section, load_or_create, sidecar_path_for_media
-from meta_face.tools.face_record import faces_to_annotation_records
-from meta_face.tools.scrfd import detect_faces
+from meta_face.tools.face_record import resolve_face_records
 
 _HEIC_SUFFIXES = {".heic", ".heif"}
 
@@ -160,8 +159,11 @@ def draw_annotations(
     dense_landmarks: bool = True,
 ) -> np.ndarray:
     """Draw bboxes, landmarks, and per-face info panels on a copy of image."""
+    from meta_face.coordinates import record_to_pixels
+
     canvas = image.copy()
     for idx, record in enumerate(records):
+        record = record_to_pixels(record, (image.shape[1], image.shape[0]))
         color = _FACE_COLORS[idx % len(_FACE_COLORS)]
         bbox = record["bbox"]
         x1, y1, x2, y2 = (int(round(v)) for v in bbox[:4])
@@ -212,8 +214,13 @@ def annotate_image(
         return None
 
     image = load_image(media_path)
-    faces = detect_faces(image)
-    records = faces_to_annotation_records(faces)
+    try:
+        records, _ = resolve_face_records(media_path, force=False, image=image)
+    except FileNotFoundError:
+        from meta_face.tools.scrfd import detect_faces
+        from meta_face.tools.face_record import faces_to_annotation_records
+
+        records = faces_to_annotation_records(detect_faces(image))
     cluster_labels = _cluster_labels_for_media(media_path)
     annotated = draw_annotations(
         image,

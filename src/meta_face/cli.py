@@ -45,12 +45,18 @@ from meta_face.scanner import (
 from meta_face.sidecar import get_face_section, list_face_tools, sidecar_path_for_media
 from meta_face.tools.registry import validate_tools
 from meta_face.worker import start_workers
+from meta_face.sdk_cli import sdk_cmd
+from meta_face.coordinate_migration import normalize_coordinates
 
 
 @click.group()
 @click.version_option(__version__, prog_name="meta-face")
 def main() -> None:
     """Face detection pipeline writing results to sidecar-rs .scar files."""
+
+
+main.add_command(sdk_cmd)
+main.add_command(normalize_coordinates)
 
 
 def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
@@ -116,8 +122,9 @@ def scan(
         )
     except PipelineDependencyError as exc:
         _exit_on_dependency_error(exc)
-    if "detectron2" not in per_image_tools:
-        tool_list = [tool for tool in tool_list if tool != "detectron2"]
+    from meta_face.config import AGGREGATE_TOOLS
+
+    tool_list = [tool for tool in tool_list if tool in per_image_tools or tool in AGGREGATE_TOOLS]
     for warning in runtime_warnings:
         click.echo(click.style(warning, fg="yellow"), err=True)
     run_cluster = run_cluster_requested(tool_list)
@@ -204,6 +211,7 @@ def _scan_inline(
     processed = 0
     faces_total = 0
     result_lock = Lock()
+    errors: list[str] = []
     pending_dirs = 1
     pending_lock = Lock()
     executor = ThreadPoolExecutor()
@@ -234,8 +242,9 @@ def _scan_inline(
                     with result_lock:
                         processed += 1
                         faces_total += int(result.get("face_count", 0))
-        except PipelineDependencyError:
-            raise
+        except Exception as exc:
+            with result_lock:
+                errors.append(f"{dir_path}: {exc}")
         finally:
             with pending_lock:
                 pending_dirs -= 1
@@ -269,6 +278,8 @@ def _scan_inline(
                     break
                 time.sleep(0.1)
 
+        if errors:
+            raise click.ClickException("Image processing failed:\n" + "\n".join(errors))
         if run_cluster:
             cluster_result = run_cluster_job(
                 str(path.resolve()),
@@ -306,13 +317,14 @@ def backends_cmd() -> None:
 @main.command("tools")
 def tools_cmd() -> None:
     """List all registered face tools and runtime availability."""
-    from meta_face.config import AGGREGATE_TOOLS, ANALYSIS_TOOLS, DETECTION_TOOLS, TOOL_GROUPS
+    from meta_face.config import AGGREGATE_TOOLS, DETECTION_TOOLS
+    from meta_face.tools.registry import TOOL_GROUPS
     from meta_face.tools.analysis.registry import list_analysis_tools, tool_availability
 
     click.echo("Detection tools:")
     for name in sorted(DETECTION_TOOLS):
         click.echo(f"  {name}")
-    click.echo("\nAnalysis tools (require scrfd crops):")
+    click.echo("\nAnalysis tools (DeepFace, UniFace and Py-Feat detect independently):")
     for name in list_analysis_tools():
         issue = tool_availability(name)
         status = "available" if issue is None else "unavailable"

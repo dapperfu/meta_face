@@ -55,20 +55,26 @@ def enqueue_process_image(
     image_path: Path,
     tools: list[str],
     force: bool = False,
-) -> str | None:
-    """Enqueue a per-image processing job. Returns job id."""
+) -> list[str]:
+    """Enqueue one RQ job per backend pipeline for an image. Returns job ids."""
     from meta_face.jobs import job_id_for_path, process_image
+    from meta_face.scanner import needs_processing, resolve_backend_job_groups
 
     queue = get_queue()
-    job = queue.enqueue(
-        process_image,
-        str(image_path),
-        tools,
-        force,
-        job_id=job_id_for_path("image", image_path),
-        failure_ttl=86400,
-    )
-    return job.id
+    job_ids: list[str] = []
+    for backend_key, group_tools in resolve_backend_job_groups(tools):
+        if not force and not needs_processing(image_path, group_tools, force=False):
+            continue
+        job = queue.enqueue(
+            process_image,
+            str(image_path),
+            group_tools,
+            force,
+            job_id=job_id_for_path(f"image-{backend_key}", image_path),
+            failure_ttl=86400,
+        )
+        job_ids.append(job.id)
+    return job_ids
 
 
 def enqueue_cluster(

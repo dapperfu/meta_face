@@ -8,9 +8,10 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from meta_face.config import DEFAULT_SCAN_META_TOOLS, DEFAULT_TOOLS
 from meta_face.backends.registry import get_detection_backend
 from meta_face.jobs import process_image
-from meta_face.scanner import resolve_per_image_tools
+from meta_face.scanner import resolve_per_image_tools, run_cluster_requested
 from meta_face.tools.registry import expand_dependencies, validate_tools
 
 
@@ -25,6 +26,17 @@ def test_validate_tools_accepts_detectron2() -> None:
 
 def test_resolve_per_image_tools_detectron2_without_scrfd() -> None:
     assert resolve_per_image_tools(["detectron2"]) == ["detectron2"]
+
+
+def test_validate_tools_default_scan_meta_tools() -> None:
+    expanded = validate_tools(list(DEFAULT_SCAN_META_TOOLS))
+    assert set(expanded) == set(DEFAULT_TOOLS)
+    assert resolve_per_image_tools(expanded) == list(DEFAULT_TOOLS)
+    assert run_cluster_requested(expanded) is False
+
+
+def test_resolve_per_image_tools_empty_uses_all_default_pipelines() -> None:
+    assert resolve_per_image_tools([]) == list(DEFAULT_TOOLS)
 
 
 def test_expand_dependencies_arcface_still_includes_scrfd() -> None:
@@ -51,9 +63,11 @@ def test_process_image_writes_detectron2_faces(tmp_path: Path) -> None:
     mock_backend = MagicMock()
     mock_backend.name = "detectron2"
     mock_backend.detect.return_value = mock_detections
-    mock_backend.to_records.return_value = [
-        {"bbox": [10.0, 20.0, 110.0, 120.0], "det_score": 0.95}
-    ]
+    mock_backend.detectron2_to_sidecar_payload.return_value = {
+        "faces": [{"bbox": [10.0, 20.0, 110.0, 120.0], "det_score": 0.95}],
+        "face_count": 1,
+        "image_size": [64, 64],
+    }
 
     fake_image = np.zeros((64, 64, 3), dtype=np.uint8)
 
@@ -74,14 +88,27 @@ def test_process_image_writes_detectron2_faces(tmp_path: Path) -> None:
     section = get_face_section(doc, "detectron2")
     assert "faces" in section
     assert len(section["faces"]) == 1
-    assert section["faces"][0]["bbox"] == [10.0, 20.0, 110.0, 120.0]
+    assert section["coordinates"]["unit"] == "normalized"
+    assert section["faces"][0]["bbox"] == [.15625, .3125, 1, 1]
 
 
-def test_detectron2_backend_available_without_weights(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_detectron2_backend_available_when_package_installed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = get_detection_backend("detectron2")
+    monkeypatch.setattr(
+        "meta_face.backends.detectron2_backend.is_detectron2_available",
+        lambda: True,
+    )
+    assert backend.available() is True
+
+
+def test_detectron2_backend_unavailable_without_package(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     backend = get_detection_backend("detectron2")
     monkeypatch.setattr(
         "meta_face.backends.detectron2_backend.is_detectron2_available",
         lambda: False,
     )
-    with patch.dict("sys.modules", {"detectron2": MagicMock(), "torch": MagicMock()}):
-        assert backend.available() is False
+    assert backend.available() is False

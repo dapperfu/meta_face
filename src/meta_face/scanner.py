@@ -6,9 +6,11 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from meta_face.config import AGGREGATE_TOOLS, ANALYSIS_TOOLS, DEFAULT_TOOLS, PER_IMAGE_TOOLS
+from meta_face.config import (
+    AGGREGATE_TOOLS, ANALYSIS_TOOLS, CROP_ANALYSIS_TOOLS, DEFAULT_TOOLS, PER_IMAGE_TOOLS,
+)
 from meta_face.imaging import is_image_path
-from meta_face.sidecar import has_tool, load_or_create
+from meta_face.sidecar import load_or_create, tool_is_current
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,7 @@ def resolve_per_image_tools(tools: list[str]) -> list[str]:
     """Return ordered per-image tools including dependencies."""
     requested = set(normalize_tools(tools))
     result: list[str] = []
-    if requested & ({"scrfd", "arcface"} | ANALYSIS_TOOLS):
+    if requested & ({"scrfd", "arcface"} | CROP_ANALYSIS_TOOLS):
         if "scrfd" not in result:
             result.append("scrfd")
         if "arcface" in requested:
@@ -99,7 +101,7 @@ def needs_processing(media_path: Path, tools: list[str], force: bool) -> bool:
         return True
     doc, _ = load_or_create(media_path)
     for tool in tools:
-        if tool in PER_IMAGE_TOOLS and not has_tool(doc, tool):
+        if tool in PER_IMAGE_TOOLS and not tool_is_current(doc, tool):
             return True
     return False
 

@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 
 from meta_face.backends.base import FaceDetectionBackend
-from meta_face.tools.scrfd import detect_faces
+from meta_face.tools.scrfd import detect_faces, faces_to_records
 
 
 class InsightFaceBackend(FaceDetectionBackend):
@@ -27,12 +27,5 @@ class InsightFaceBackend(FaceDetectionBackend):
     def detect(self, image: np.ndarray) -> list[dict[str, Any]]:
         self.ensure_available()
         faces = detect_faces(image)
-        return [
-            {
-                "bbox": [float(x) for x in face.bbox.tolist()],
-                "landmarks": [[float(x), float(y)] for x, y in face.kps.tolist()],
-                "det_score": float(face.det_score),
-            }
-            for face in faces
-        ]
+        return faces_to_records(faces)
 

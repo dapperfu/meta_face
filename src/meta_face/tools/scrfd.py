@@ -30,16 +30,17 @@ def detect_faces(image: np.ndarray) -> list[Any]:
 
 
 def faces_to_records(faces: list[Any]) -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
-    for face in faces:
-        bbox = [float(x) for x in face.bbox.tolist()]
-        landmarks = [[float(x), float(y)] for x, y in face.kps.tolist()]
-        det_score = float(face.det_score)
-        records.append(
-            {
-                "bbox": bbox,
-                "landmarks": landmarks,
-                "det_score": det_score,
-            }
-        )
-    return records
+    """Serialize insightface faces for face.scrfd.faces (see faces_to_sidecar_records)."""
+    from meta_face.tools.face_record import faces_to_sidecar_records
+
+    return faces_to_sidecar_records(faces)
+
+
+def scrfd_tool_payload(
+    faces: list[Any],
+    *,
+    image_size: tuple[int, int] | None = None,
+) -> dict[str, Any]:
+    from meta_face.tools.face_record import scrfd_to_sidecar_payload
+
+    return scrfd_to_sidecar_payload(faces, image_size=image_size)

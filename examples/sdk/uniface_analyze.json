@@ -1,0 +1,38 @@
+{
+  "steps": [
+    {
+      "id": "detector",
+      "call": "RetinaFace"
+    },
+    {
+      "id": "recognizer",
+      "call": "AdaFace",
+      "kwargs": {
+        "model_name": {
+          "$symbol": "constants.AdaFaceWeights.IR_101"
+        }
+      }
+    },
+    {
+      "id": "analyzer",
+      "call": "FaceAnalyzer",
+      "kwargs": {
+        "detector": {
+          "$ref": "detector"
+        },
+        "recognizer": {
+          "$ref": "recognizer"
+        }
+      }
+    },
+    {
+      "id": "faces",
+      "call": "$analyzer.analyze",
+      "args": [
+        {
+          "$image": "/photos/team.jpg"
+        }
+      ]
+    }
+  ]
+}

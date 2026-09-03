@@ -1,0 +1,23 @@
+{
+  "steps": [
+    {
+      "id": "detector",
+      "call": "Detectorv2",
+      "kwargs": {
+        "device": "cpu"
+      }
+    },
+    {
+      "id": "fex",
+      "call": "$detector.detect",
+      "args": [
+        "/videos/match.mp4"
+      ],
+      "kwargs": {
+        "data_type": "video",
+        "skip_frames": 10,
+        "progress_bar": false
+      }
+    }
+  ]
+}

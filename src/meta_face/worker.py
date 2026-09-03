@@ -6,7 +6,7 @@ import multiprocessing as mp
 import signal
 import sys
 
-from rq import Worker
+from rq import SimpleWorker
 
 from meta_face.config import RQ_CLUSTER_QUEUE_NAME, RQ_QUEUE_NAME, RQ_SCAN_QUEUE_NAME
 from meta_face.deps import PipelineDependencyError, require_cluster_runtime, require_inference_runtime
@@ -28,7 +28,9 @@ def _worker_main(queue_names: list[str]) -> None:
         sys.exit(1)
 
     redis_conn = get_redis()
-    worker = Worker(queue_names, connection=redis_conn)
+    # SimpleWorker runs jobs in-process. RQ's default fork Worker can break CUDA
+    # after native dlib/face_recognition imports in the parent process.
+    worker = SimpleWorker(queue_names, connection=redis_conn)
     worker.work(with_scheduler=False)
 
 

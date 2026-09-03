@@ -1,5 +1,7 @@
 # Facial analysis tools integration
 
+Update 2026-09-02: DeepFace, UniFace and Py-Feat now detect independently, preserve complete results, and expose public APIs through `mf sdk`. See `docs/SDK_TOOLS.md` and `FACE_TOOL_COVERAGE.md` for the verified API coverage and remaining adapter defects. The phase table below originated as an implementation plan, not an accuracy benchmark.
+
 ## Goal
 
 Integrate ALL external facial analysis libraries into meta_face as registered, crop-based tools that reuse SCRFD detections and write namespaced results to `.scar` sidecars.
@@ -36,10 +38,10 @@ flowchart LR
 | `bisenet` | parsing | 3 | Full (ONNX download) |
 | `face_antispoof_onnx` | liveness | 3 | Full (ONNX download) |
 | `face_anti_spoofing` | liveness | 3 | Stub (Silent-Face-Anti-Spoofing) |
-| `uniface` | multi | 3 | Stub (requires UniFace SDK) |
-| `py_feat` | AU/emotion | 4 | Stub (requires py-feat) |
+| `uniface` | multi | 3 | Expanded 4.x photo adapter and complete public SDK access |
+| `py_feat` | multi | 4 | Full Fex results; legacy/current detectors and public SDK access |
 | `emonet` | valence/arousal | 4 | Stub (requires EmoNet) |
-| `deepface` | emotion/attributes | 4 | Stub (requires DeepFace) |
+| `deepface` | multi | 4 | Detection, embeddings, attributes, liveness and public SDK access |
 | `inspireface` | multi | 4 | Stub (requires InspireFace bindings) |
 
 ## Meta-tool groups
@@ -80,7 +82,7 @@ mf scan /photos --tools scrfd,emotiefflib,yakhyo_gaze,fairface
 
 ## Blockers / notes
 
-- **LibreFace, OpenFace 3.0, UniFace, InspireFace**: no stable PyPI packages; stubs document install steps
+- **UniFace**: released 4.x package is included in `[sdk-tools]`; other SDK adapters still require the API/runtime repairs described in the coverage report
 - **DeepFace / py-feat / EmoNet**: heavy transitive deps; optional extras only
 - **face_anti_spoofing**: expects Silent-Face-Anti-Spoofing repo layout (`src.anti_spoof_predict`)
 - **Model URLs**: best-effort in `analysis_models.py`; some upstream URLs may 404 — manual placement documented in error messages

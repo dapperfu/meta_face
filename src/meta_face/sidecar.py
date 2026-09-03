@@ -87,6 +87,21 @@ def has_tool(doc: SidecarDocument, tool: str) -> bool:
     return key in doc
 
 
+def tool_is_current(doc: SidecarDocument, tool: str) -> bool:
+    """True when the sidecar version matches the current tool version.
+
+    Presence of an old version key is not enough: corrected adapters bump
+    TOOL_VERSIONS so scans re-run without ``--force``.
+    """
+    if not has_tool(doc, tool):
+        return False
+    expected = TOOL_VERSIONS.get(tool)
+    if expected is None:
+        return True
+    stored = doc[tool_version_key(tool)]
+    return stored == expected
+
+
 def list_face_tools(doc: SidecarDocument) -> list[str]:
     tools: set[str] = set()
     prefix = FACE_KEY_PREFIX
@@ -117,8 +132,18 @@ def write_tool_result(
     data: dict[str, Any],
     *,
     version: str | None = None,
+    image_size: tuple[int, int] | None = None,
 ) -> None:
-    """Write face.<tool>.version, processed_at, and data fields."""
+    """Write tool data, normalizing geometry before changing the document.
+
+    Pixel geometry requires original image dimensions. Metadata-only payloads
+    (such as clustering labels or embeddings) do not require an image size.
+    """
+    size = image_size or data.get("image_size")
+    if size is not None or data.get("faces") or "coordinates" in data:
+        from meta_face.coordinates import to_normalized
+
+        data = to_normalized(data, size)
     doc.set(tool_version_key(tool), version or TOOL_VERSIONS.get(tool, "1.0.0"))
     doc.set(tool_processed_at_key(tool), utc_now_iso())
     for field, value in data.items():

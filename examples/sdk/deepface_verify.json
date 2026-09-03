@@ -1,0 +1,14 @@
+{
+  "steps": [
+    {
+      "id": "pair",
+      "call": "verify",
+      "kwargs": {
+        "img1_path": "/photos/reference.jpg",
+        "img2_path": "/photos/candidate.jpg",
+        "model_name": "ArcFace",
+        "detector_backend": "retinaface"
+      }
+    }
+  ]
+}

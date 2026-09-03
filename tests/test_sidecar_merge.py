@@ -12,6 +12,7 @@ from meta_face.sidecar import update_sidecar, write_tool_result
 
 def _pose_result() -> dict:
     return {
+        "image_size": [100, 200],
         "native": {},
         "keypoints": [[{"name": "nose", "x": 1.0, "y": 2.0, "score": 0.5}]],
         "bboxes": [[0.0, 0.0, 100.0, 200.0]],
@@ -39,7 +40,7 @@ def test_write_preserves_pose_namespace(tmp_path: Path) -> None:
 
     doc = SidecarDocument.from_path(image.with_suffix(".scar"))
     assert doc["pose.yolo.model"] == "yolo"
-    assert doc["face.scrfd.version"] == "1.0.0"
+    assert doc["face.scrfd.version"] == "2.0.0"
 
 
 def test_sequential_face_then_pose(tmp_path: Path) -> None:
@@ -53,7 +54,7 @@ def test_sequential_face_then_pose(tmp_path: Path) -> None:
     _write_pose(image)
 
     doc = SidecarDocument.from_path(image.with_suffix(".scar"))
-    assert doc["face.arcface.version"] == "1.0.0"
+    assert doc["face.arcface.version"] == "1.1.0"
     assert doc["pose.yolo.keypoints"]
 
 
@@ -92,5 +93,5 @@ def test_concurrent_face_and_pose_namespaces(tmp_path: Path) -> None:
 
     assert not errors
     doc = SidecarDocument.from_path(scar)
-    assert doc["face.scrfd.version"] == "1.0.0"
+    assert doc["face.scrfd.version"] == "2.0.0"
     assert doc["pose.yolo.model"] == "yolo"

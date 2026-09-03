@@ -1,0 +1,1053 @@
+{
+  "file": "20100911_164552.260.jpg",
+  "tools": {
+    "opencv_fer": {
+      "faces": [
+        {
+          "face_index": 0,
+          "bbox": [
+            1038.2091064453125,
+            484.3307189941406,
+            1087.6295166015625,
+            575.0897827148438
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "anger": -1.3948439359664917,
+            "disgust": -1.947645664215088,
+            "fear": -3.3719851970672607,
+            "happiness": -2.31105375289917,
+            "neutral": 4.635137557983398,
+            "sadness": 1.6254572868347168,
+            "surprise": 2.804720401763916
+          },
+          "expression_scores": {
+            "anger": 0.00198029245266389,
+            "disgust": 0.0011393327783540516,
+            "fear": 0.0002742002160472366,
+            "happiness": 0.0007921810777578768,
+            "neutral": 0.8232221004136854,
+            "sadness": 0.040590975353511624,
+            "surprise": 0.1320009177079799
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 1,
+          "bbox": [
+            471.5203552246094,
+            487.6732482910156,
+            519.3175048828125,
+            572.2363891601562
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "anger": -1.6613980531692505,
+            "disgust": -2.1053531169891357,
+            "fear": -5.13112211227417,
+            "happiness": 0.6610899567604065,
+            "neutral": 7.900356769561768,
+            "sadness": 2.9910123348236084,
+            "surprise": -3.2475574016571045
+          },
+          "expression_scores": {
+            "anger": 6.979498280025747e-05,
+            "disgust": 4.477307989958179e-05,
+            "fear": 2.1724119943942577e-06,
+            "happiness": 0.000711980225222263,
+            "neutral": 0.9918398684102755,
+            "sadness": 0.0073171231362038945,
+            "surprise": 1.4287753604284238e-05
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 2,
+          "bbox": [
+            788.9043579101562,
+            495.31103515625,
+            836.0150146484375,
+            566.7869873046875
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "happiness",
+          "expression_logits": {
+            "anger": -2.2214910984039307,
+            "disgust": -1.304471731185913,
+            "fear": -3.856462240219116,
+            "happiness": 4.7443413734436035,
+            "neutral": 4.515937328338623,
+            "sadness": 0.4911525547504425,
+            "surprise": -2.4829204082489014
+          },
+          "expression_scores": {
+            "anger": 0.0005200960700522771,
+            "disgust": 0.0013011879213165563,
+            "fear": 0.00010139688824799683,
+            "happiness": 0.551196151412535,
+            "neutral": 0.43864336055516695,
+            "sadness": 0.007837359026783834,
+            "surprise": 0.0004004481258972424
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 3,
+          "bbox": [
+            680.849609375,
+            504.3119812011719,
+            731.6873779296875,
+            573.7648315429688
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "anger": -2.2059621810913086,
+            "disgust": 2.5611252784729004,
+            "fear": -2.418126344680786,
+            "happiness": -5.817220211029053,
+            "neutral": 5.148230075836182,
+            "sadness": 0.5371392369270325,
+            "surprise": 1.514929175376892
+          },
+          "expression_scores": {
+            "anger": 0.0005750488729035466,
+            "disgust": 0.0676121171063504,
+            "fear": 0.0004651178758666089,
+            "happiness": 1.553657627281741e-05,
+            "neutral": 0.8986485390539024,
+            "sadness": 0.008933436725891617,
+            "surprise": 0.02375020378881266
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 4,
+          "bbox": [
+            1544.431640625,
+            534.9419555664062,
+            1699.822021484375,
+            776.0914916992188
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "anger": 0.26681825518608093,
+            "disgust": -4.551177501678467,
+            "fear": -4.723765850067139,
+            "happiness": 4.12060022354126,
+            "neutral": 4.203858375549316,
+            "sadness": -3.6365511417388916,
+            "surprise": 4.119044303894043
+          },
+          "expression_scores": {
+            "anger": 0.006822650350035992,
+            "disgust": 5.514728597850351e-05,
+            "fear": 4.6405555583508514e-05,
+            "happiness": 0.32183209939253954,
+            "neutral": 0.3497743146106222,
+            "sadness": 0.00013763894180944517,
+            "surprise": 0.32133174386343083
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 5,
+          "bbox": [
+            233.8316650390625,
+            560.6295166015625,
+            357.642822265625,
+            751.7237548828125
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "happiness",
+          "expression_logits": {
+            "anger": -0.9221392869949341,
+            "disgust": -3.275819778442383,
+            "fear": -3.8346269130706787,
+            "happiness": 6.108057498931885,
+            "neutral": 2.7217421531677246,
+            "sadness": -1.275200366973877,
+            "surprise": 0.10552270710468292
+          },
+          "expression_scores": {
+            "anger": 0.0008524136180816599,
+            "disgust": 8.099532077652713e-05,
+            "fear": 4.632048251423523e-05,
+            "happiness": 0.9634430543530794,
+            "neutral": 0.03259627563237963,
+            "sadness": 0.0005988497885387722,
+            "surprise": 0.0023820908046297586
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 6,
+          "bbox": [
+            915.927490234375,
+            621.072998046875,
+            1030.64697265625,
+            798.208740234375
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "anger": -3.412062883377075,
+            "disgust": 0.735278844833374,
+            "fear": -4.148207664489746,
+            "happiness": 3.482715129852295,
+            "neutral": 4.194277763366699,
+            "sadness": 3.1817281246185303,
+            "surprise": -4.0294270515441895
+          },
+          "expression_scores": {
+            "anger": 0.00026358506709888254,
+            "disgust": 0.01667586726592108,
+            "fear": 0.00012624587193275094,
+            "happiness": 0.26018655303975075,
+            "neutral": 0.5300447934577064,
+            "sadness": 0.19256078693845602,
+            "surprise": 0.00014216835913400902
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        }
+      ],
+      "face_count": 7,
+      "model": "opencv_facial_expression_recognition.onnx",
+      "face_index_source": "scrfd",
+      "image_size": [
+        2048,
+        1366
+      ],
+      "adapter": "sports-review-1.0",
+      "errors": []
+    },
+    "fer_plus": {
+      "faces": [
+        {
+          "face_index": 0,
+          "bbox": [
+            1038.2091064453125,
+            484.3307189941406,
+            1087.6295166015625,
+            575.0897827148438
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "neutral": 4.348496437072754,
+            "happiness": -0.3032712936401367,
+            "surprise": -0.07368084788322449,
+            "sadness": 2.107456684112549,
+            "anger": -0.0763862133026123,
+            "disgust": -2.290574550628662,
+            "fear": -2.076002836227417,
+            "contempt": -1.01273775100708
+          },
+          "expression_scores": {
+            "neutral": 0.8714589688618216,
+            "happiness": 0.008317827076937057,
+            "surprise": 0.010464530570975236,
+            "sadness": 0.09267780631573659,
+            "anger": 0.010436258452288147,
+            "disgust": 0.0011400792700228925,
+            "fear": 0.001412935576857863,
+            "contempt": 0.004091593875360629
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 1,
+          "bbox": [
+            471.5203552246094,
+            487.6732482910156,
+            519.3175048828125,
+            572.2363891601562
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "neutral": 5.093710422515869,
+            "happiness": -0.1613531857728958,
+            "surprise": -1.9319547414779663,
+            "sadness": 3.1420905590057373,
+            "anger": 0.6709672212600708,
+            "disgust": -1.8309921026229858,
+            "fear": -3.6286234855651855,
+            "contempt": -0.7614690065383911
+          },
+          "expression_scores": {
+            "neutral": 0.8589840482168858,
+            "happiness": 0.004484767897541695,
+            "surprise": 0.0007634445276041813,
+            "sadness": 0.12201335282427926,
+            "anger": 0.010308895366897775,
+            "disgust": 0.0008445492942525168,
+            "fear": 0.00013993411749621632,
+            "contempt": 0.002461007755042576
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 2,
+          "bbox": [
+            788.9043579101562,
+            495.31103515625,
+            836.0150146484375,
+            566.7869873046875
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "neutral": 4.118979454040527,
+            "happiness": 3.1583199501037598,
+            "surprise": -1.6115524768829346,
+            "sadness": 2.2699146270751953,
+            "anger": -0.7399201393127441,
+            "disgust": -2.352707862854004,
+            "fear": -3.156445264816284,
+            "contempt": -0.9844552874565125
+          },
+          "expression_scores": {
+            "neutral": 0.6412953557530959,
+            "happiness": 0.24538554341843352,
+            "surprise": 0.0020812281855608996,
+            "sadness": 0.1009298072225587,
+            "anger": 0.004975821740047248,
+            "disgust": 0.0009918363126799493,
+            "fear": 0.0004439982781251934,
+            "contempt": 0.0038964090894984863
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 3,
+          "bbox": [
+            680.849609375,
+            504.3119812011719,
+            731.6873779296875,
+            573.7648315429688
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "neutral": 4.44774055480957,
+            "happiness": -2.4592010974884033,
+            "surprise": -1.2426360845565796,
+            "sadness": 2.864361524581909,
+            "anger": 1.3763906955718994,
+            "disgust": -1.141923189163208,
+            "fear": -2.571500778198242,
+            "contempt": -0.7032293677330017
+          },
+          "expression_scores": {
+            "neutral": 0.7896134147649506,
+            "happiness": 0.0007902561267377268,
+            "surprise": 0.002667567045073579,
+            "sadness": 0.16209206026460693,
+            "anger": 0.036605321208673366,
+            "disgust": 0.0029502199689555642,
+            "fear": 0.0007063122521876354,
+            "contempt": 0.004574848368814463
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 4,
+          "bbox": [
+            1544.431640625,
+            534.9419555664062,
+            1699.822021484375,
+            776.0914916992188
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "neutral": 4.619409561157227,
+            "happiness": 2.4508275985717773,
+            "surprise": 0.014175161719322205,
+            "sadness": 1.6577353477478027,
+            "anger": -1.3861875534057617,
+            "disgust": -3.1431710720062256,
+            "fear": -2.4583730697631836,
+            "contempt": -1.093335509300232
+          },
+          "expression_scores": {
+            "neutral": 0.8452308454052443,
+            "happiness": 0.09664339049067995,
+            "surprise": 0.008451765719593338,
+            "sadness": 0.0437256797349919,
+            "anger": 0.002083423939955925,
+            "disgust": 0.0003595252552349992,
+            "fear": 0.0007130720220017545,
+            "contempt": 0.0027922974322979414
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 5,
+          "bbox": [
+            233.8316650390625,
+            560.6295166015625,
+            357.642822265625,
+            751.7237548828125
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "happiness",
+          "expression_logits": {
+            "neutral": 2.4313740730285645,
+            "happiness": 7.958717346191406,
+            "surprise": -0.8079051971435547,
+            "sadness": -0.06489504873752594,
+            "anger": -0.6898025274276733,
+            "disgust": -2.6854045391082764,
+            "fear": -3.5627024173736572,
+            "contempt": -1.2733210325241089
+          },
+          "expression_scores": {
+            "neutral": 0.003957673344050666,
+            "happiness": 0.9952555977981339,
+            "surprise": 0.0001551096555615194,
+            "sadness": 0.00032607990882740304,
+            "anger": 0.0001745541470415368,
+            "disgust": 2.372745888120662e-05,
+            "fear": 9.868374035166964e-06,
+            "contempt": 9.738931346843416e-05
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        },
+        {
+          "face_index": 6,
+          "bbox": [
+            915.927490234375,
+            621.072998046875,
+            1030.64697265625,
+            798.208740234375
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "expression_label": "neutral",
+          "expression_logits": {
+            "neutral": 4.292423248291016,
+            "happiness": 0.7361127138137817,
+            "surprise": -0.19676516950130463,
+            "sadness": 2.6131808757781982,
+            "anger": -0.21429064869880676,
+            "disgust": -2.649411678314209,
+            "fear": -2.3899173736572266,
+            "contempt": -1.698195219039917
+          },
+          "expression_scores": {
+            "neutral": 0.8051237803216412,
+            "happiness": 0.02298140694932964,
+            "surprise": 0.009041341977095677,
+            "sadness": 0.15016784834477573,
+            "anger": 0.008884268540288929,
+            "disgust": 0.0007781477236800736,
+            "fear": 0.0010086929743743443,
+            "contempt": 0.0020145131688145256
+          },
+          "interpretation": "model expression estimate; not a person's internal emotion"
+        }
+      ],
+      "face_count": 7,
+      "model": "emotion-ferplus-8.onnx",
+      "face_index_source": "scrfd",
+      "image_size": [
+        2048,
+        1366
+      ],
+      "adapter": "sports-review-1.0",
+      "errors": []
+    },
+    "yakhyo_gaze": {
+      "faces": [
+        {
+          "face_index": 0,
+          "bbox": [
+            1038.2091064453125,
+            484.3307189941406,
+            1087.6295166015625,
+            575.0897827148438
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "gaze": {
+            "yaw": -14.461757332424895,
+            "pitch": -20.422078844090805,
+            "units": "degrees"
+          },
+          "decoding": "softmax expected bin index * 4 - 180, separately for yaw and pitch"
+        },
+        {
+          "face_index": 1,
+          "bbox": [
+            471.5203552246094,
+            487.6732482910156,
+            519.3175048828125,
+            572.2363891601562
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "gaze": {
+            "yaw": -41.35542750205897,
+            "pitch": -18.243328640287274,
+            "units": "degrees"
+          },
+          "decoding": "softmax expected bin index * 4 - 180, separately for yaw and pitch"
+        },
+        {
+          "face_index": 2,
+          "bbox": [
+            788.9043579101562,
+            495.31103515625,
+            836.0150146484375,
+            566.7869873046875
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "gaze": {
+            "yaw": 3.4250224791685753,
+            "pitch": -21.398127191957315,
+            "units": "degrees"
+          },
+          "decoding": "softmax expected bin index * 4 - 180, separately for yaw and pitch"
+        },
+        {
+          "face_index": 3,
+          "bbox": [
+            680.849609375,
+            504.3119812011719,
+            731.6873779296875,
+            573.7648315429688
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "gaze": {
+            "yaw": 48.68600509093804,
+            "pitch": -18.44373693024812,
+            "units": "degrees"
+          },
+          "decoding": "softmax expected bin index * 4 - 180, separately for yaw and pitch"
+        },
+        {
+          "face_index": 4,
+          "bbox": [
+            1544.431640625,
+            534.9419555664062,
+            1699.822021484375,
+            776.0914916992188
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "gaze": {
+            "yaw": 4.565627752463342,
+            "pitch": -10.82951439649716,
+            "units": "degrees"
+          },
+          "decoding": "softmax expected bin index * 4 - 180, separately for yaw and pitch"
+        },
+        {
+          "face_index": 5,
+          "bbox": [
+            233.8316650390625,
+            560.6295166015625,
+            357.642822265625,
+            751.7237548828125
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "gaze": {
+            "yaw": -53.87814436595944,
+            "pitch": -21.02630055282401,
+            "units": "degrees"
+          },
+          "decoding": "softmax expected bin index * 4 - 180, separately for yaw and pitch"
+        },
+        {
+          "face_index": 6,
+          "bbox": [
+            915.927490234375,
+            621.072998046875,
+            1030.64697265625,
+            798.208740234375
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "gaze": {
+            "yaw": 44.96030105672173,
+            "pitch": -15.759954238649414,
+            "units": "degrees"
+          },
+          "decoding": "softmax expected bin index * 4 - 180, separately for yaw and pitch"
+        }
+      ],
+      "face_count": 7,
+      "model": "yakhyo_gaze.onnx",
+      "face_index_source": "scrfd",
+      "image_size": [
+        2048,
+        1366
+      ],
+      "adapter": "sports-review-1.0",
+      "errors": []
+    },
+    "bisenet": {
+      "faces": [
+        {
+          "face_index": 0,
+          "bbox": [
+            1038.2091064453125,
+            484.3307189941406,
+            1087.6295166015625,
+            575.0897827148438
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "parsing_labels_present": [
+            0,
+            1,
+            17,
+            18
+          ],
+          "parsing_shape": [
+            512,
+            512
+          ],
+          "class_pixel_percent": {
+            "0": 88.36288452148438,
+            "1": 0.4863739013671875,
+            "17": 0.38909912109375,
+            "18": 10.761642456054688
+          },
+          "parsing_mask": "reports/test_images/masks/20100911_164552.260_face_000.png",
+          "mask_coordinate_space": "512x512 resized face crop; pixel values are class IDs",
+          "crop_bbox_pixels": [
+            1038,
+            484,
+            1088,
+            576
+          ]
+        },
+        {
+          "face_index": 1,
+          "bbox": [
+            471.5203552246094,
+            487.6732482910156,
+            519.3175048828125,
+            572.2363891601562
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "parsing_labels_present": [
+            0,
+            1
+          ],
+          "parsing_shape": [
+            512,
+            512
+          ],
+          "class_pixel_percent": {
+            "0": 99.90463256835938,
+            "1": 0.095367431640625
+          },
+          "parsing_mask": "reports/test_images/masks/20100911_164552.260_face_001.png",
+          "mask_coordinate_space": "512x512 resized face crop; pixel values are class IDs",
+          "crop_bbox_pixels": [
+            471,
+            487,
+            520,
+            573
+          ]
+        },
+        {
+          "face_index": 2,
+          "bbox": [
+            788.9043579101562,
+            495.31103515625,
+            836.0150146484375,
+            566.7869873046875
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "parsing_labels_present": [
+            0
+          ],
+          "parsing_shape": [
+            512,
+            512
+          ],
+          "class_pixel_percent": {
+            "0": 100.0
+          },
+          "parsing_mask": "reports/test_images/masks/20100911_164552.260_face_002.png",
+          "mask_coordinate_space": "512x512 resized face crop; pixel values are class IDs",
+          "crop_bbox_pixels": [
+            788,
+            495,
+            837,
+            567
+          ]
+        },
+        {
+          "face_index": 3,
+          "bbox": [
+            680.849609375,
+            504.3119812011719,
+            731.6873779296875,
+            573.7648315429688
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "parsing_labels_present": [
+            0
+          ],
+          "parsing_shape": [
+            512,
+            512
+          ],
+          "class_pixel_percent": {
+            "0": 100.0
+          },
+          "parsing_mask": "reports/test_images/masks/20100911_164552.260_face_003.png",
+          "mask_coordinate_space": "512x512 resized face crop; pixel values are class IDs",
+          "crop_bbox_pixels": [
+            680,
+            504,
+            732,
+            574
+          ]
+        },
+        {
+          "face_index": 4,
+          "bbox": [
+            1544.431640625,
+            534.9419555664062,
+            1699.822021484375,
+            776.0914916992188
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "parsing_labels_present": [
+            0,
+            1,
+            14,
+            17
+          ],
+          "parsing_shape": [
+            512,
+            512
+          ],
+          "class_pixel_percent": {
+            "0": 46.70143127441406,
+            "1": 25.672531127929688,
+            "14": 0.7877349853515625,
+            "17": 26.838302612304688
+          },
+          "parsing_mask": "reports/test_images/masks/20100911_164552.260_face_004.png",
+          "mask_coordinate_space": "512x512 resized face crop; pixel values are class IDs",
+          "crop_bbox_pixels": [
+            1544,
+            534,
+            1700,
+            777
+          ]
+        },
+        {
+          "face_index": 5,
+          "bbox": [
+            233.8316650390625,
+            560.6295166015625,
+            357.642822265625,
+            751.7237548828125
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "parsing_labels_present": [
+            0,
+            1,
+            2,
+            3,
+            5,
+            10,
+            11,
+            12,
+            13,
+            17
+          ],
+          "parsing_shape": [
+            512,
+            512
+          ],
+          "class_pixel_percent": {
+            "0": 1.5468597412109375,
+            "1": 77.57759094238281,
+            "2": 1.151275634765625,
+            "3": 0.3993988037109375,
+            "5": 0.003814697265625,
+            "10": 5.07354736328125,
+            "11": 0.3475189208984375,
+            "12": 0.4650115966796875,
+            "13": 1.454925537109375,
+            "17": 11.980056762695312
+          },
+          "parsing_mask": "reports/test_images/masks/20100911_164552.260_face_005.png",
+          "mask_coordinate_space": "512x512 resized face crop; pixel values are class IDs",
+          "crop_bbox_pixels": [
+            233,
+            560,
+            358,
+            752
+          ]
+        },
+        {
+          "face_index": 6,
+          "bbox": [
+            915.927490234375,
+            621.072998046875,
+            1030.64697265625,
+            798.208740234375
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "parsing_labels_present": [
+            0,
+            1,
+            2,
+            17,
+            18
+          ],
+          "parsing_shape": [
+            512,
+            512
+          ],
+          "class_pixel_percent": {
+            "0": 29.474639892578125,
+            "1": 37.03804016113281,
+            "2": 1.0532379150390625,
+            "17": 32.43293762207031,
+            "18": 0.0011444091796875
+          },
+          "parsing_mask": "reports/test_images/masks/20100911_164552.260_face_006.png",
+          "mask_coordinate_space": "512x512 resized face crop; pixel values are class IDs",
+          "crop_bbox_pixels": [
+            915,
+            621,
+            1031,
+            799
+          ]
+        }
+      ],
+      "face_count": 7,
+      "model": "bisenet_face_parsing.onnx",
+      "face_index_source": "scrfd",
+      "image_size": [
+        2048,
+        1366
+      ],
+      "adapter": "sports-review-1.0",
+      "errors": []
+    },
+    "face_antispoof_onnx": {
+      "faces": [
+        {
+          "face_index": 0,
+          "bbox": [
+            1038.2091064453125,
+            484.3307189941406,
+            1087.6295166015625,
+            575.0897827148438
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "class_probabilities": [
+            0.0010943500392298683,
+            0.32278115861655077,
+            0.6761244913442194
+          ],
+          "live_class_probability": 0.32278115861655077,
+          "interpretation": "diagnostic only; still photos cannot establish liveness or authenticity"
+        },
+        {
+          "face_index": 1,
+          "bbox": [
+            471.5203552246094,
+            487.6732482910156,
+            519.3175048828125,
+            572.2363891601562
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "class_probabilities": [
+            0.0012718864202788417,
+            0.9517846832586394,
+            0.046943430321081746
+          ],
+          "live_class_probability": 0.9517846832586394,
+          "interpretation": "diagnostic only; still photos cannot establish liveness or authenticity"
+        },
+        {
+          "face_index": 2,
+          "bbox": [
+            788.9043579101562,
+            495.31103515625,
+            836.0150146484375,
+            566.7869873046875
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "class_probabilities": [
+            0.001357476429502706,
+            0.9947437792321187,
+            0.003898744338378437
+          ],
+          "live_class_probability": 0.9947437792321187,
+          "interpretation": "diagnostic only; still photos cannot establish liveness or authenticity"
+        },
+        {
+          "face_index": 3,
+          "bbox": [
+            680.849609375,
+            504.3119812011719,
+            731.6873779296875,
+            573.7648315429688
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "class_probabilities": [
+            0.00039835405697472075,
+            0.996792452965857,
+            0.0028091929771685226
+          ],
+          "live_class_probability": 0.996792452965857,
+          "interpretation": "diagnostic only; still photos cannot establish liveness or authenticity"
+        },
+        {
+          "face_index": 4,
+          "bbox": [
+            1544.431640625,
+            534.9419555664062,
+            1699.822021484375,
+            776.0914916992188
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "class_probabilities": [
+            1.8067004931915545e-05,
+            0.9991875428852973,
+            0.0007943901097706819
+          ],
+          "live_class_probability": 0.9991875428852973,
+          "interpretation": "diagnostic only; still photos cannot establish liveness or authenticity"
+        },
+        {
+          "face_index": 5,
+          "bbox": [
+            233.8316650390625,
+            560.6295166015625,
+            357.642822265625,
+            751.7237548828125
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "class_probabilities": [
+            7.337653563389288e-06,
+            0.9999591941918459,
+            3.346815459071762e-05
+          ],
+          "live_class_probability": 0.9999591941918459,
+          "interpretation": "diagnostic only; still photos cannot establish liveness or authenticity"
+        },
+        {
+          "face_index": 6,
+          "bbox": [
+            915.927490234375,
+            621.072998046875,
+            1030.64697265625,
+            798.208740234375
+          ],
+          "bbox_source": "scrfd",
+          "small_face_under_40px": false,
+          "class_probabilities": [
+            0.0001551000407634421,
+            0.9988786739246402,
+            0.0009662260345964531
+          ],
+          "live_class_probability": 0.9988786739246402,
+          "interpretation": "diagnostic only; still photos cannot establish liveness or authenticity"
+        }
+      ],
+      "face_count": 7,
+      "model": "face_antispoof.onnx",
+      "face_index_source": "scrfd",
+      "image_size": [
+        2048,
+        1366
+      ],
+      "adapter": "sports-review-1.0",
+      "errors": []
+    },
+    "mediapipe_blendshapes": {
+      "faces": [],
+      "face_count": 0,
+      "face_index_source": "scrfd",
+      "attempted_face_count": 7,
+      "missing_faces": [
+        {
+          "face_index": 0,
+          "reason": "no landmarks detected in source crop"
+        },
+        {
+          "face_index": 1,
+          "reason": "no landmarks detected in source crop"
+        },
+        {
+          "face_index": 2,
+          "reason": "no landmarks detected in source crop"
+        },
+        {
+          "face_index": 3,
+          "reason": "no landmarks detected in source crop"
+        },
+        {
+          "face_index": 4,
+          "reason": "no landmarks detected in source crop"
+        },
+        {
+          "face_index": 5,
+          "reason": "no landmarks detected in source crop"
+        },
+        {
+          "face_index": 6,
+          "reason": "no landmarks detected in source crop"
+        }
+      ],
+      "model": "face_landmarker.task",
+      "blendshape_count": 52,
+      "image_size": [
+        2048,
+        1366
+      ],
+      "device": "CPU",
+      "adapter": "1.8x crop per SCRFD face; mesh center checked against source bbox",
+      "import_workaround": "optional sounddevice unavailable for this photo-only process"
+    }
+  },
+  "seconds": 1.3880983889102936,
+  "mediapipe_seconds": 0.06233815802261233
+}

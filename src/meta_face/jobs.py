@@ -10,7 +10,7 @@ from typing import Any
 import cv2
 
 from meta_face.backends.registry import get_detection_backend
-from meta_face.config import ANALYSIS_TOOLS
+from meta_face.config import ANALYSIS_TOOLS, CROP_ANALYSIS_TOOLS
 from meta_face.deps import (
     require_cluster_runtime,
     require_dlib_runtime,
@@ -19,7 +19,7 @@ from meta_face.deps import (
     require_insightface_runtime,
 )
 from meta_face.imaging import load_image
-from meta_face.sidecar import has_tool, load_or_create, update_sidecar, write_tool_result
+from meta_face.sidecar import has_tool, load_or_create, tool_is_current, update_sidecar, write_tool_result
 from meta_face.tools.registry import expand_dependencies
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 def _tools_to_run(doc: object, tools: list[str], force: bool) -> list[str]:
     if force:
         return tools
-    return [t for t in tools if not has_tool(doc, t)]  # type: ignore[arg-type]
+    return [t for t in tools if not tool_is_current(doc, t)]  # type: ignore[arg-type]
 
 
 def process_image(image_path: str, tools: list[str], force: bool = False) -> dict[str, Any]:
@@ -55,7 +55,7 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
     scrfd_in_sidecar = has_tool(doc, "scrfd")  # type: ignore[arg-type]
     needs_scrfd_detect = (
         bool(pending_set & {"scrfd", "arcface"})
-        or (bool(pending_analysis) and not scrfd_in_sidecar)
+        or (bool(pending_set & CROP_ANALYSIS_TOOLS) and not scrfd_in_sidecar)
     )
 
     if needs_scrfd_detect:
@@ -81,10 +81,10 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
         face_count = max(face_count, len(detectron2_detections))
 
     def _patch(doc: object) -> None:
+        nonlocal face_count
+        h_img, w_img = image.shape[:2]
+        image_size = (w_img, h_img)
         if insightface_faces is not None:
-            h_img, w_img = image.shape[:2]
-            image_size = (w_img, h_img)
-
             if "scrfd" in pending_set:
                 from meta_face.tools.face_record import scrfd_to_sidecar_payload
 
@@ -92,6 +92,7 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
                     doc,
                     "scrfd",
                     scrfd_to_sidecar_payload(insightface_faces, image_size=image_size),
+                    image_size=image_size,
                 )  # type: ignore[arg-type]
             if "arcface" in pending_set:
                 from meta_face.tools.arcface import arcface_to_sidecar_payload
@@ -100,6 +101,7 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
                     doc,
                     "arcface",
                     arcface_to_sidecar_payload(insightface_faces),
+                    image_size=image_size,
                 )  # type: ignore[arg-type]
 
         if dlib_rgb_faces is not None:
@@ -116,22 +118,23 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
                         dlib_faces,
                         image_size=(w_img, h_img),
                     ),
+                    image_size=image_size,
                 )  # type: ignore[arg-type]
             if "dlib_embed" in pending_set:
                 write_tool_result(
                     doc,
                     "dlib_embed",
                     dlib_embed_to_sidecar_payload(rgb, dlib_faces),
+                    image_size=image_size,
                 )  # type: ignore[arg-type]
 
         if detectron2_detections is not None:
-            from meta_face.backends.detectron2_backend import Detectron2Backend
-
-            d2 = Detectron2Backend()
+            backend = get_detection_backend("detectron2")
             write_tool_result(
                 doc,
                 "detectron2",
-                d2.detectron2_to_sidecar_payload(image, detectron2_detections),
+                backend.detectron2_to_sidecar_payload(image, detectron2_detections),
+                image_size=image_size,
             )  # type: ignore[arg-type]
 
         if pending_analysis:
@@ -145,7 +148,8 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
                 insightface_faces=insightface_faces,
             )
             for tool_name, payload in analysis_results.items():
-                write_tool_result(doc, tool_name, payload)  # type: ignore[arg-type]
+                face_count = max(face_count, int(payload.get("face_count", 0)))
+                write_tool_result(doc, tool_name, payload, image_size=image_size)
 
     scar_path = update_sidecar(media_path, _patch)
     return {

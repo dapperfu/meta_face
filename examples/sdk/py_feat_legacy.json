@@ -1,0 +1,17 @@
+{
+  "steps": [
+    {
+      "id": "detector",
+      "call": "Detector"
+    },
+    {
+      "id": "fex",
+      "call": "$detector.detect_image",
+      "args": [
+        [
+          "/photos/team.jpg"
+        ]
+      ]
+    }
+  ]
+}

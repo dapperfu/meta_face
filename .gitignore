@@ -59,6 +59,9 @@ data/
 # insightface model cache
 .insightface/
 
+# Jupyter
+.ipynb_checkpoints/
+
 # Test / coverage
 .pytest_cache/
 .coverage

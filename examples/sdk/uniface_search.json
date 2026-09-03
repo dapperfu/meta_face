@@ -1,0 +1,46 @@
+{
+  "steps": [
+    {
+      "id": "store",
+      "call": "FAISS",
+      "kwargs": {
+        "embedding_size": 3,
+        "db_path": "/tmp/meta-face-example-index"
+      }
+    },
+    {
+      "id": "added",
+      "call": "$store.add",
+      "args": [
+        {
+          "$array": [
+            1,
+            0,
+            0
+          ],
+          "dtype": "float32"
+        },
+        {
+          "identity": "example"
+        }
+      ]
+    },
+    {
+      "id": "match",
+      "call": "$store.search",
+      "args": [
+        {
+          "$array": [
+            1,
+            0,
+            0
+          ],
+          "dtype": "float32"
+        }
+      ],
+      "kwargs": {
+        "threshold": 0.8
+      }
+    }
+  ]
+}

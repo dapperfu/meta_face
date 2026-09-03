@@ -1,0 +1,24 @@
+{
+  "steps": [
+    {
+      "id": "detector",
+      "call": "Detectorv1",
+      "kwargs": {
+        "device": "cpu"
+      }
+    },
+    {
+      "id": "fex",
+      "call": "$detector.detect",
+      "args": [
+        [
+          "/photos/team.jpg"
+        ]
+      ],
+      "kwargs": {
+        "data_type": "image",
+        "progress_bar": false
+      }
+    }
+  ]
+}

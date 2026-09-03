@@ -1,0 +1,516 @@
+--- a/README.md
++++ b/README.md
+@@ -391,3 +391,11 @@
+ ## License
+ 
+ MIT
++
++## Resize-independent coordinates
++
++New pose sidecars store canonical and native image x/y positions as normalized fractions of image width and height, clamped to `[0, 1]` (`coordinates.schema: 2`, `unit: "normalized"`). Bounding-box corners are also clamped; confidence, depth in its native units, embeddings and physical pose values are preserved. MediaPipe depth retains its native normalized units. `image_size` records original inference dimensions.
++
++`read_pose_result` resolves positions for the current image by default; use `as_pixels=False` for stored fractions. `draw_pose` accepts either representation. Resizing is supported; crop/rotation/orientation changes need a separate transform.
++
++Preview existing sidecar migration with `mp normalize-coordinates /photos`, then apply with `--write`. Readers and migration also support schema 1 `unit: "percent"` records by dividing by 100 and clamping. This conversion needs no image dimensions. Migration repairs out-of-range normalized records and is idempotent. Legacy pixel records without original dimensions are skipped; supply `--source-size WIDTH HEIGHT` only when those original dimensions are known. Migration retains model versions/timestamps and other namespaces, including `face.*`.
+--- a/src/meta_pose/annotate.py
++++ b/src/meta_pose/annotate.py
+@@ -83,6 +83,9 @@
+     min_score: float = 0.3,
+ ) -> np.ndarray:
+     """Draw bboxes, skeleton, keypoints, and footer on a copy of image_bgr."""
++    from meta_pose.coordinates import to_pixels
++
++    result = to_pixels(result, (image_bgr.shape[1], image_bgr.shape[0]))
+     canvas = image_bgr.copy()
+     keypoints_list: list[list[dict[str, Any]]] = result.get("keypoints") or []
+     bboxes: list[list[float]] = result.get("bboxes") or []
+--- a/src/meta_pose/backends/mediapipe_backend.py
++++ b/src/meta_pose/backends/mediapipe_backend.py
+@@ -4,11 +4,11 @@
+ 
+ import os
+ from pathlib import Path
+-from typing import Any
++from typing import TYPE_CHECKING, Any
+ from urllib.request import urlretrieve
+ 
+-import mediapipe as mp
+-from mediapipe.tasks.python import vision
++if TYPE_CHECKING:
++    from mediapipe.tasks.python import vision
+ 
+ from meta_pose.backends.base import PoseBackend
+ from meta_pose.schema import build_inference_result, keypoint
+@@ -72,6 +72,9 @@
+             return False
+ 
+     def _get_landmarker(self) -> vision.PoseLandmarker:
++        import mediapipe as mp
++        from mediapipe.tasks.python import vision
++
+         if self._landmarker is None:
+             options = vision.PoseLandmarkerOptions(
+                 base_options=mp.tasks.BaseOptions(
+@@ -85,6 +88,7 @@
+     def infer(self, image_path: Path) -> dict[str, Any]:
+         self.ensure_available()
+         import cv2
++        import mediapipe as mp
+ 
+         image_bgr = cv2.imread(str(image_path))
+         if image_bgr is None:
+--- a/src/meta_pose/cli.py
++++ b/src/meta_pose/cli.py
+@@ -13,12 +13,16 @@
+ from meta_pose.discovery import discover_images
+ from meta_pose.queue import enqueue_pose_job, queue_stats, run_workers
+ from meta_pose.skip import should_skip_tool
++from meta_pose.coordinate_migration import normalize_coordinates
+ 
+ 
+ @click.group()
+ @click.version_option(version=__version__, prog_name="meta-pose")
+ def main() -> None:
+     """Multi-backend pose detection with sidecar-rs output."""
++
++
++main.add_command(normalize_coordinates)
+ 
+ 
+ @main.command("info")
+--- /dev/null
++++ b/src/meta_pose/coordinate_migration.py
+@@ -0,0 +1,68 @@
++"""Migrate stored pose coordinates without rerunning detection."""
++
++from pathlib import Path
++
++import click
++from sidecar_rs import SidecarDocument
++
++from meta_pose.coordinates import RELATIVE_UNITS, to_normalized
++
++
++def migrate_document(doc, *, write=False, source_size=None):
++    entries = doc.entries()
++    tools = sorted({key.split('.')[1] for key in entries
++                    if key.startswith('pose.') and key.endswith('.keypoints')})
++    report = {'converted': [], 'already_normalized': [], 'missing_size': []}
++    for tool in tools:
++        prefix = f'pose.{tool}.'
++        result = {key[len(prefix):]: value for key, value in entries.items() if key.startswith(prefix)}
++        size = result.get('image_size') or source_size
++        if size is None and result.get('coordinates', {}).get('unit') not in RELATIVE_UNITS:
++            report['missing_size'].append(tool)
++            continue
++        original = dict(result)
++        result['bboxes'] = result.pop('bbox', [])
++        result = to_normalized(result, size, tool=tool)
++        result['bbox'] = result.pop('bboxes')
++        if result == original:
++            report['already_normalized'].append(tool)
++            continue
++        if write:
++            for field, value in result.items():
++                doc.set(prefix + field, value)
++        report['converted'].append(tool)
++    return report
++
++
++@click.command('normalize-coordinates')
++@click.argument('path', type=click.Path(exists=True, path_type=Path))
++@click.option('--write', is_flag=True)
++@click.option('--source-size', nargs=2, type=click.IntRange(min=1), default=None,
++              help='Known original WIDTH HEIGHT for legacy records without image_size.')
++def normalize_coordinates(path, write, source_size):
++    """Preview or migrate pose sidecars to clamped normalized image coordinates."""
++    paths = sorted(path.rglob('*.scar')) if path.is_dir() else [path.with_suffix('.scar')]
++    totals = {'converted': 0, 'already_normalized': 0, 'missing_size': 0}
++    try:
++        for scar in paths:
++            if not scar.is_file():
++                raise FileNotFoundError(f'No existing sidecar: {scar}')
++            if write:
++                reports = []
++
++                def patch(doc):
++                    reports.append(migrate_document(doc, write=True, source_size=source_size))
++
++                SidecarDocument.update_path(scar, patch)
++                report = reports[0]
++            else:
++                report = migrate_document(SidecarDocument.from_path(scar), source_size=source_size)
++            for key in totals:
++                totals[key] += len(report[key])
++            if report['missing_size']:
++                click.echo(f"{scar}: original dimensions needed for {', '.join(report['missing_size'])}", err=True)
++        verb = 'Converted' if write else 'Would convert'
++        click.echo(f"{verb} {totals['converted']} sections; {totals['already_normalized']} already normalized; "
++                   f"{totals['missing_size']} need original dimensions.")
++    except Exception as exc:
++        raise click.ClickException(str(exc)) from exc
+--- /dev/null
++++ b/src/meta_pose/coordinates.py
+@@ -0,0 +1,95 @@
++"""Image geometry normalized to [0, 1]; confidence and native depth keep their units."""
++
++from __future__ import annotations
++
++import copy
++import math
++from typing import Any
++
++COORDINATES = {"schema": 2, "unit": "normalized", "space": "image",
++               "x_reference": "width", "y_reference": "height"}
++RELATIVE_UNITS = {"normalized", "percent"}  # Schema 1 remains readable.
++
++
++def _size(size: Any) -> tuple[float, float]:
++    w, h = map(float, size)
++    if not all(math.isfinite(v) and v > 0 for v in (w, h)):
++        raise ValueError("Original image dimensions must be finite and positive")
++    return w, h
++
++
++def _factors(unit: str | None, size: Any) -> tuple[float, float]:
++    if unit == "normalized":
++        return 1.0, 1.0
++    if unit == "percent":
++        return .01, .01
++    if unit not in {None, "pixels"}:
++        raise ValueError(f"Unknown image coordinate unit: {unit}")
++    if size is None:
++        raise ValueError("Original image dimensions are required for pixel coordinates")
++    w, h = _size(size)
++    return 1 / w, 1 / h
++
++
++def _position(value: Any, factor: float, clamp: bool) -> Any:
++    if value is None:
++        return None
++    value *= factor
++    if not math.isfinite(value):
++        raise ValueError("Image coordinates must be finite")
++    return max(0.0, min(1.0, value)) if clamp else value
++
++
++def _transform(value: Any, fx: float, fy: float, *, clamp: bool, points: bool = False) -> Any:
++    if isinstance(value, list):
++        if points and len(value) >= 2 and all(v is None or isinstance(v, (int, float)) for v in value):
++            return [_position(value[0], fx, clamp), _position(value[1], fy, clamp), *value[2:]]
++        return [_transform(item, fx, fy, clamp=clamp, points=points) for item in value]
++    if not isinstance(value, dict):
++        return value
++    result = dict(value)
++    for key, item in value.items():
++        if "world" in key or key in {"pose", "coordinates", "native_coordinates"}:
++            result[key] = copy.deepcopy(item)
++        elif key in {"bbox", "bboxes"} and isinstance(item, list):
++            boxes = item if key == "bboxes" else [item]
++            converted = [[_position(v, fx if i % 2 == 0 else fy, clamp) if i < 4 else v
++                          for i, v in enumerate(box)] for box in boxes]
++            result[key] = converted if key == "bboxes" else converted[0]
++        elif points and key in {"x", "y"} and (item is None or isinstance(item, (int, float))):
++            result[key] = _position(item, fx if key == "x" else fy, clamp)
++        else:
++            result[key] = _transform(item, fx, fy, clamp=clamp,
++                                     points=points or key in {"landmarks", "keypoints", "kps"})
++    return result
++
++
++def to_normalized(result: dict[str, Any], image_size: Any = None, *, tool: str) -> dict[str, Any]:
++    """Normalize pixels or schema 1 coordinates and clamp all image x/y values."""
++    unit = result.get("coordinates", {}).get("unit")
++    size = result.get("image_size") if unit in RELATIVE_UNITS else image_size or result.get("image_size")
++    if size is None:
++        size = image_size
++    if size is not None:
++        _size(size)
++    fx, fy = _factors(unit, size)
++    output = _transform(result, fx, fy, clamp=True)
++    native_unit = result.get("native_coordinates", {}).get("unit", unit)
++    if native_unit != unit and "native" in result:
++        output["native"] = _transform(result["native"], *_factors(native_unit, size), clamp=True)
++    output["coordinates"] = {**result.get("coordinates", {}), **COORDINATES}
++    output["native_coordinates"] = {**result.get("native_coordinates", {}), **COORDINATES, "z_unit": "native"}
++    if size is not None:
++        output["image_size"] = [int(v) for v in _size(size)]
++    return output
++
++
++def to_pixels(result: dict[str, Any], image_size: Any) -> dict[str, Any]:
++    w, h = _size(image_size)
++    if result.get("coordinates", {}).get("unit") not in RELATIVE_UNITS and not result.get("image_size"):
++        return copy.deepcopy(result)
++    output = _transform(to_normalized(result, tool=""), w, h, clamp=False)
++    output["coordinates"] = {"schema": 2, "unit": "pixels", "space": "image"}
++    output["native_coordinates"] = {"schema": 2, "unit": "pixels", "space": "image", "z_unit": "native"}
++    output["image_size"] = [int(w), int(h)]
++    return output
+--- a/src/meta_pose/sidecar_io.py
++++ b/src/meta_pose/sidecar_io.py
+@@ -41,8 +41,9 @@
+     return [tool for tool in all_backend_names() if has_pose_tool(image_path, tool)]
+ 
+ 
+-def read_pose_result(image_path: str | Path, tool: str) -> dict[str, Any]:
+-    """Load pose.<tool>.* fields from the sidecar."""
++def read_pose_result(image_path: str | Path, tool: str, *,
++                     as_pixels: bool = True, image_size: tuple[int, int] | None = None) -> dict[str, Any]:
++    """Load pose results, resolving positions against the current image by default."""
+     scar = sidecar_path_for_image(image_path)
+     if not scar.is_file():
+         raise FileNotFoundError(f"No sidecar for image: {image_path}")
+@@ -55,7 +56,7 @@
+         key = _tool_key(tool, field)
+         return doc[key] if key in doc else default
+ 
+-    return {
++    result = {
+         "native": _get("native"),
+         "keypoints": doc[keypoints_key],
+         "bboxes": _get("bbox", []),
+@@ -63,6 +64,24 @@
+         "version": _get("version", ""),
+         "created": _get("created", ""),
+     }
++    for field in ("coordinates", "native_coordinates", "image_size"):
++        value = _get(field)
++        if value is not None:
++            result[field] = value
++    if as_pixels and ("coordinates" in result or "image_size" in result):
++        from meta_pose.coordinates import to_pixels
++
++        result = to_pixels(result, image_size or _image_size(Path(image_path)))
++    return result
++
++
++def _image_size(image_path: Path) -> tuple[int, int]:
++    import cv2
++
++    image = cv2.imread(str(image_path))
++    if image is None:
++        raise ValueError(f"Cannot determine image dimensions for {image_path}; supply image_size")
++    return image.shape[1], image.shape[0]
+ 
+ 
+ def load_or_create_document(image_path: str | Path) -> SidecarDocument:
+@@ -91,16 +110,27 @@
+     doc.set(_tool_key(tool, "model"), result["model"])
+     doc.set(_tool_key(tool, "version"), result["version"])
+     doc.set(_tool_key(tool, "created"), result["created"])
++    for field in ("coordinates", "native_coordinates", "image_size"):
++        if field in result:
++            doc.set(_tool_key(tool, field), result[field])
+ 
+ 
+ def write_pose_result(
+     image_path: str | Path,
+     tool: str,
+     result: dict[str, Any],
++    *,
++    image_size: tuple[int, int] | None = None,
+ ) -> Path:
+     """Merge pose.<tool>.* into the image sidecar and return scar path."""
+     image_path = Path(image_path)
+     scar = sidecar_path_for_image(image_path)
++    from meta_pose.coordinates import RELATIVE_UNITS, to_normalized
++
++    size = image_size or result.get("image_size")
++    if size is None and result.get("coordinates", {}).get("unit") not in RELATIVE_UNITS:
++        size = _image_size(image_path)
++    result = to_normalized(result, size, tool=tool)
+ 
+     def _patch(doc: SidecarDocument) -> None:
+         _apply_pose_result(doc, image_path, tool, result)
+--- a/tests/test_annotate.py
++++ b/tests/test_annotate.py
+@@ -58,7 +58,7 @@
+ 
+ def test_resolve_tools_from_sidecar(tmp_path: Path) -> None:
+     image = tmp_path / "img.jpg"
+-    image.write_bytes(b"x")
++    cv2.imwrite(str(image), np.zeros((400, 400, 3), dtype=np.uint8))
+     write_pose_result(image, "yolo", _sample_result())
+     write_pose_result(image, "mediapipe", {**_sample_result(), "model": "mp"})
+ 
+@@ -70,7 +70,7 @@
+ 
+ def test_list_pose_tools_and_read(tmp_path: Path) -> None:
+     image = tmp_path / "img.jpg"
+-    image.write_bytes(b"x")
++    cv2.imwrite(str(image), np.zeros((400, 400, 3), dtype=np.uint8))
+     write_pose_result(image, "yolo", _sample_result())
+ 
+     assert list_pose_tools(image) == ["yolo"]
+--- /dev/null
++++ b/tests/test_coordinates.py
+@@ -0,0 +1,124 @@
++"""Persistence, resizing and mixed native units for pose geometry."""
++
++import cv2
++import numpy as np
++import pytest
++from sidecar_rs import SidecarDocument
++
++from meta_pose.coordinates import to_normalized
++from meta_pose.coordinate_migration import migrate_document
++from meta_pose.sidecar_io import read_pose_result, write_pose_result
++
++
++def test_pose_normalized_storage_and_resize(tmp_path):
++    path = tmp_path / 'pose.png'
++    cv2.imwrite(str(path), np.zeros((200, 400, 3), dtype=np.uint8))
++    result = {'native': {'detections': [{'keypoints': [{'x': 100, 'y': 60, 'score': .9}]}]},
++              'keypoints': [[{'name': 'nose', 'x': 100, 'y': 60, 'score': .9}]],
++              'bboxes': [[80, 40, 200, 180]], 'model': 'test', 'version': '1', 'created': 'original'}
++    scar = write_pose_result(path, 'yolo', result)
++    doc = SidecarDocument.from_path(scar)
++    assert doc['pose.yolo.keypoints'][0][0]['x'] == .25
++    assert doc['pose.yolo.keypoints'][0][0]['y'] == .3
++    assert doc['pose.yolo.native']['detections'][0]['keypoints'][0]['x'] == .25
++    cv2.imwrite(str(path), np.zeros((50, 200, 3), dtype=np.uint8))
++    read = read_pose_result(path, 'yolo')
++    assert read['keypoints'][0][0] == {'name': 'nose', 'x': 50, 'y': 15, 'score': .9}
++    assert read['bboxes'] == [[40, 10, 100, 45]]
++    from meta_pose.annotate import draw_pose
++
++    assert draw_pose(np.zeros((50, 200, 3), dtype=np.uint8), read).shape == (50, 200, 3)
++
++
++def test_mediapipe_native_pixels_and_depth():
++    # The backend converts MediaPipe x/y to pixels before building native output.
++    source = {'native': {'poses': [{'landmarks': [{'x': 100, 'y': 60, 'z': -.1, 'visibility': .9}]}]},
++              'keypoints': [[{'name': 'nose', 'x': 100, 'y': 60, 'score': .9}]], 'bboxes': []}
++    result = to_normalized(source, (400, 200), tool='mediapipe')
++    assert result['native']['poses'][0]['landmarks'][0] == {'x': .25, 'y': .3, 'z': -.1, 'visibility': .9}
++    assert result['keypoints'][0][0]['x'] == .25
++    assert to_normalized(result, (800, 400), tool='mediapipe') == result
++
++
++def test_migration_requires_original_size_and_preserves_face():
++    doc = SidecarDocument()
++    doc.set('pose.yolo.keypoints', [[{'x': 100, 'y': 60, 'score': .9}]])
++    doc.set('pose.yolo.bbox', [[80, 40, 200, 180]])
++    doc.set('pose.yolo.created', 'original')
++    doc.set('face.scrfd.faces', [{'bbox': [1, 2, 3, 4]}])
++    assert migrate_document(doc)['missing_size'] == ['yolo']
++    migrate_document(doc, write=True, source_size=(400, 200))
++    assert doc['pose.yolo.bbox'] == [[.2, .2, .5, .9]]
++    assert doc['pose.yolo.created'] == 'original'
++    assert doc['face.scrfd.faces'] == [{'bbox': [1, 2, 3, 4]}]
++
++
++def test_clamp_canonical_native_and_boxes_preserving_depth_and_scores():
++    from meta_pose.coordinates import to_pixels
++
++    source = {'native': {'poses': [{'landmarks': [
++        {'x': -4, 'y': 210, 'z': -.2, 'visibility': .9},
++        {'x': 420, 'y': -10, 'z': 2, 'visibility': .4}]}],
++        'world_landmarks': [{'x': -2, 'y': 3, 'z': 5}]},
++        'keypoints': [[{'x': -4, 'y': 210, 'score': .9}, {'x': 420, 'y': -10, 'score': .4}]],
++        'bboxes': [[-20, -10, 420, 210]], 'pose': [-30, 60, 180]}
++    result = to_normalized(source, (400, 200), tool='mediapipe')
++    assert result['coordinates']['schema'] == 2
++    assert result['coordinates']['unit'] == 'normalized'
++    assert result['keypoints'][0] == [{'x': 0, 'y': 1, 'score': .9}, {'x': 1, 'y': 0, 'score': .4}]
++    assert result['bboxes'] == [[0, 0, 1, 1]]
++    assert result['native']['poses'][0]['landmarks'] == [
++        {'x': 0, 'y': 1, 'z': -.2, 'visibility': .9}, {'x': 1, 'y': 0, 'z': 2, 'visibility': .4}]
++    assert result['native']['world_landmarks'] == source['native']['world_landmarks']
++    assert result['pose'] == source['pose']
++    assert to_normalized(result, tool='mediapipe') == result
++    pixels = to_pixels(result, (200, 50))
++    assert pixels['bboxes'] == [[0, 0, 200, 50]]
++    assert pixels['keypoints'][0][0] == {'x': 0, 'y': 50, 'score': .9}
++    assert source['keypoints'][0][0]['x'] == -4
++
++
++def test_schema_1_migration_and_reader_without_original_size(tmp_path):
++    path = tmp_path / 'pose.png'
++    doc = SidecarDocument()
++    doc.set('pose.yolo.coordinates', {'schema': 1, 'unit': 'percent', 'space': 'image'})
++    doc.set('pose.yolo.native_coordinates', {'schema': 1, 'unit': 'percent', 'space': 'image', 'z_unit': 'native'})
++    doc.set('pose.yolo.native', {'detections': [{'keypoints': [{'x': -5, 'y': 120, 'score': .9}]}]})
++    doc.set('pose.yolo.keypoints', [[{'x': -5, 'y': 120, 'score': .9}]])
++    doc.set('pose.yolo.bbox', [[-5, 20, 105, 80]])
++    doc.set('pose.yolo.created', 'original')
++    # Read the old representation directly before migrating it.
++    doc.to_path(path.with_suffix('.scar'))
++    read = read_pose_result(path, 'yolo', image_size=(400, 200))
++    assert read['keypoints'][0][0] == {'x': 0, 'y': 200, 'score': .9}
++    assert read['bboxes'] == [[0, 40, 400, 160]]
++    assert migrate_document(doc)['converted'] == ['yolo']
++    assert doc['pose.yolo.coordinates']['unit'] == 'percent'
++    migrate_document(doc, write=True)
++    assert doc['pose.yolo.keypoints'][0][0] == {'x': 0, 'y': 1, 'score': .9}
++    assert doc['pose.yolo.native']['detections'][0]['keypoints'][0]['y'] == 1
++    assert doc['pose.yolo.bbox'] == [[0, .2, 1, .8]]
++    assert doc['pose.yolo.created'] == 'original'
++    assert 'pose.yolo.image_size' not in doc
++    assert migrate_document(doc)['already_normalized'] == ['yolo']
++    doc.set('pose.yolo.keypoints', [[{'x': 1.4, 'y': -.2, 'score': .9}]])
++    assert migrate_document(doc, write=True)['converted'] == ['yolo']
++    assert doc['pose.yolo.keypoints'][0][0] == {'x': 1, 'y': 0, 'score': .9}
++
++
++def test_point_rows_and_legacy_pixel_resize():
++    from meta_pose.coordinates import to_pixels
++
++    source = {'native': {'instances': [{'bbox': [-4, 10, 420, 190], 'keypoints': [[-4, 210, .9], [400, 0, .7]]}]},
++              'keypoints': [], 'bboxes': [], 'image_size': [400, 200]}
++    result = to_normalized(source, tool='mmpose')
++    assert result['native']['instances'][0]['bbox'] == pytest.approx([0, .05, 1, .95])
++    assert result['native']['instances'][0]['keypoints'] == [[0, 1, .9], [1, 0, .7]]
++    pixels = to_pixels(source, (200, 50))
++    assert pixels['native']['instances'][0]['keypoints'] == [[0, 50, .9], [200, 0, .7]]
++
++
++def test_nonfinite_positions_are_rejected():
++    for value in (float('nan'), float('inf'), float('-inf')):
++        with pytest.raises(ValueError, match='finite'):
++            to_normalized({'keypoints': [[{'x': value, 'y': 10}]]}, (400, 200), tool='yolo')
+--- a/tests/test_sidecar_io.py
++++ b/tests/test_sidecar_io.py
+@@ -17,6 +17,7 @@
+     image = tmp_path / "img.jpg"
+     image.write_bytes(b"x")
+     result = {
++        "image_size": [100, 200],
+         "native": {"foo": 1},
+         "keypoints": [[{"name": "nose", "x": 1.0, "y": 2.0, "score": 0.5}]],
+         "bboxes": [[0.0, 0.0, 100.0, 200.0]],
+@@ -39,6 +40,7 @@
+     image = tmp_path / "img.jpg"
+     image.write_bytes(b"x")
+     base_result = {
++        "image_size": [100, 200],
+         "native": {},
+         "keypoints": [[]],
+         "bboxes": [[0, 0, 1, 1]],
+@@ -68,6 +70,7 @@
+     SidecarDocument.update_path(scar, seed_face)
+ 
+     result = {
++        "image_size": [100, 200],
+         "native": {},
+         "keypoints": [[]],
+         "bboxes": [[0, 0, 1, 1]],
+@@ -107,6 +110,7 @@
+     image.write_bytes(b"x")
+     scar = sidecar_path_for_image(image)
+     result = {
++        "image_size": [100, 200],
+         "native": {},
+         "keypoints": [[]],
+         "bboxes": [[0, 0, 1, 1]],
+--- a/tests/test_skip.py
++++ b/tests/test_skip.py
+@@ -13,6 +13,7 @@
+         image,
+         "mediapipe",
+         {
++            "image_size": [100, 100],
+             "native": {},
+             "keypoints": [[{"name": "nose", "x": 1, "y": 2, "score": 0.9}]],
+             "bboxes": [[0, 0, 10, 10]],

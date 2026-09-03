@@ -1,0 +1,159 @@
+{
+  "opencv_fer": {
+    "inputs": [
+      {
+        "name": "data",
+        "shape": [
+          1,
+          3,
+          112,
+          112
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "label",
+        "shape": [
+          1,
+          7
+        ]
+      }
+    ],
+    "provider": [
+      "CPUExecutionProvider"
+    ],
+    "weights_sha256": "4f61307602fc089ce20488a31d4e4614e3c9753a7d6c41578c854858b183e1a9"
+  },
+  "fer_plus": {
+    "inputs": [
+      {
+        "name": "Input3",
+        "shape": [
+          1,
+          1,
+          64,
+          64
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Plus692_Output_0",
+        "shape": [
+          1,
+          8
+        ]
+      }
+    ],
+    "provider": [
+      "CPUExecutionProvider"
+    ],
+    "weights_sha256": "a2a2ba6a335a3b29c21acb6272f962bd3d47f84952aaffa03b60986e04efa61c"
+  },
+  "yakhyo_gaze": {
+    "inputs": [
+      {
+        "name": "input",
+        "shape": [
+          1,
+          3,
+          448,
+          448
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "yaw",
+        "shape": [
+          1,
+          90
+        ]
+      },
+      {
+        "name": "pitch",
+        "shape": [
+          1,
+          90
+        ]
+      }
+    ],
+    "provider": [
+      "CPUExecutionProvider"
+    ],
+    "weights_sha256": "c8e6b14f6095d2425241b9302aa663d9a23b7dfb9d43941352b718c91dc7f2cf"
+  },
+  "bisenet": {
+    "inputs": [
+      {
+        "name": "input",
+        "shape": [
+          "batch_size",
+          3,
+          512,
+          512
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "shape": [
+          "batch_size",
+          "Resizeoutput_dim_1",
+          "Resizeoutput_dim_2",
+          "Resizeoutput_dim_3"
+        ]
+      },
+      {
+        "name": "414",
+        "shape": [
+          "batch_size",
+          "Resizeoutput_dim_1",
+          "Resizeoutput_dim_2",
+          "Resizeoutput_dim_3"
+        ]
+      },
+      {
+        "name": "424",
+        "shape": [
+          "batch_size",
+          "Resizeoutput_dim_1",
+          "Resizeoutput_dim_2",
+          "Resizeoutput_dim_3"
+        ]
+      }
+    ],
+    "provider": [
+      "CPUExecutionProvider"
+    ],
+    "weights_sha256": "0d9bd318e46987c3bdbfacae9e2c0f461cae1c6ac6ea6d43bbe541a91727e33f"
+  },
+  "face_antispoof_onnx": {
+    "inputs": [
+      {
+        "name": "input",
+        "shape": [
+          "batch_size",
+          3,
+          80,
+          80
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "shape": [
+          "batch_size",
+          3
+        ]
+      }
+    ],
+    "provider": [
+      "CPUExecutionProvider"
+    ],
+    "weights_sha256": "b32929adc2d9c34b9486f8c4c7bc97c1b69bc0ea9befefc380e4faae4e463907"
+  }
+}

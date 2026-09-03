@@ -1,0 +1,52 @@
+{
+  "steps": [
+    {
+      "id": "tracker",
+      "call": "BYTETracker"
+    },
+    {
+      "id": "frame1",
+      "call": "$tracker.update",
+      "args": [
+        {
+          "$array": [
+            [
+              10,
+              20,
+              50,
+              70,
+              0.95
+            ]
+          ],
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "id": "frame2",
+      "call": "$tracker.update",
+      "args": [
+        {
+          "$array": [
+            [
+              12,
+              20,
+              52,
+              70,
+              0.95
+            ]
+          ],
+          "dtype": "float32"
+        }
+      ]
+    }
+  ],
+  "output": {
+    "first": {
+      "$ref": "frame1"
+    },
+    "second": {
+      "$ref": "frame2"
+    }
+  }
+}

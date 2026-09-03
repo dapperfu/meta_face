@@ -9,12 +9,12 @@ import numpy as np
 
 from meta_face.backends.base import FaceDetectionBackend
 from meta_face.config import (
-    DETECTRON2_CONFIG_PATH,
-    DETECTRON2_DEVICE,
+    DETECTRON2_CLASS_FILTER,
     DETECTRON2_SCORE_THRESH,
-    DETECTRON2_WEIGHTS_PATH,
+    resolve_detectron2_device,
 )
-from meta_face.models import is_detectron2_available
+from meta_face.detectron2_model import is_detectron2_available, resolve_detectron2_model
+from meta_face.tools.sidecar_encode import json_safe
 
 
 class Detectron2Backend(FaceDetectionBackend):
@@ -23,11 +23,6 @@ class Detectron2Backend(FaceDetectionBackend):
         return "detectron2"
 
     def available(self) -> bool:
-        try:
-            import detectron2  # noqa: F401
-            import torch  # noqa: F401
-        except ImportError:
-            return False
         return is_detectron2_available()
 
     @lru_cache(maxsize=1)
@@ -35,16 +30,18 @@ class Detectron2Backend(FaceDetectionBackend):
         from detectron2.config import get_cfg
         from detectron2.engine import DefaultPredictor
 
+        paths = resolve_detectron2_model()
         cfg = get_cfg()
-        cfg.merge_from_file(str(DETECTRON2_CONFIG_PATH))
-        cfg.MODEL.WEIGHTS = str(DETECTRON2_WEIGHTS_PATH)
-        cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = DETECTRON2_SCORE_THRESH
-        cfg.MODEL.DEVICE = DETECTRON2_DEVICE
-        return DefaultPredictor(cfg)
+        cfg.merge_from_file(paths.config)
+        cfg.MODEL.WEIGHTS = paths.weights
+        cfg.MODEL.RETINANET.SCORE_THRESH_TEST = DETECTRON2_SCORE_THRESH
+        device = resolve_detectron2_device()
+        cfg.MODEL.DEVICE = device
+        return DefaultPredictor(cfg), paths, device
 
     def detect(self, image: np.ndarray) -> list[dict[str, Any]]:
         self.ensure_available()
-        predictor = self._get_predictor()
+        predictor, _paths, _device = self._get_predictor()
         outputs = predictor(image)
         instances = outputs["instances"].to("cpu")
         detections: list[dict[str, Any]] = []
@@ -56,33 +53,71 @@ class Detectron2Backend(FaceDetectionBackend):
         if instances.has("pred_keypoints"):
             keypoints = instances.pred_keypoints.numpy()
 
+        pred_classes = None
+        if instances.has("pred_classes"):
+            pred_classes = instances.pred_classes.numpy()
+
+        kept = 0
         for idx in range(len(boxes)):
+            if pred_classes is not None and DETECTRON2_CLASS_FILTER is not None:
+                if int(pred_classes[idx]) not in DETECTRON2_CLASS_FILTER:
+                    continue
             x1, y1, x2, y2 = boxes[idx].tolist()
             det: dict[str, Any] = {
+                "face_index": kept,
                 "bbox": [float(x1), float(y1), float(x2), float(y2)],
                 "det_score": float(scores[idx]),
+                "bbox_width": float(x2 - x1),
+                "bbox_height": float(y2 - y1),
             }
+            if pred_classes is not None:
+                det["class_id"] = int(pred_classes[idx])
             if keypoints is not None:
                 kps = keypoints[idx]
-                det["landmarks"] = [[float(x), float(y)] for x, y in kps]
+                det["keypoints"] = json_safe(kps.tolist())
+                det["landmarks"] = [[float(x), float(y)] for x, y in kps[:, :2]]
+                if kps.shape[1] >= 3:
+                    det["keypoint_visibility"] = [float(v) for v in kps[:, 2]]
             detections.append(det)
+            kept += 1
 
         return detections
+
+    def detectron2_to_sidecar_payload(
+        self,
+        image: np.ndarray,
+        detections: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """All detectron2 tool outputs for face.detectron2.* sidecar keys."""
+        if detections is None:
+            detections = self.detect(image)
+        h_img, w_img = image.shape[:2]
+        _predictor, paths, device = self._get_predictor()
+        class_filter = (
+            sorted(DETECTRON2_CLASS_FILTER) if DETECTRON2_CLASS_FILTER is not None else None
+        )
+        return json_safe(
+            {
+                "faces": self.to_records(detections),
+                "face_count": len(detections),
+                "image_size": [int(w_img), int(h_img)],
+                "score_thresh": DETECTRON2_SCORE_THRESH,
+                "config_path": paths.config,
+                "weights_path": paths.weights,
+                "model_zoo": paths.model_zoo,
+                "class_filter": class_filter,
+                "device": device,
+            }
+        )
 
     def ensure_available(self) -> None:
         if self.available():
             return
+        from meta_face.deps import detectron2_install_message, detectron2_weights_message
+
         try:
             import detectron2  # noqa: F401
             import torch  # noqa: F401
         except ImportError:
-            raise RuntimeError(
-                "Detectron2 backend is not installed. Install optional extras:\n"
-                "  pip install -e \".[detectron2]\"\n"
-                "Then install detectron2 wheels for your CUDA/torch version:\n"
-                "  https://github.com/facebookresearch/detectron2/blob/main/INSTALL.md"
-            ) from None
-        raise RuntimeError(
-            "Detectron2 model files are missing. Download weights:\n"
-            "  mf download --backend detectron2"
-        )
+            raise RuntimeError(detectron2_install_message()) from None
+        raise RuntimeError(detectron2_weights_message())

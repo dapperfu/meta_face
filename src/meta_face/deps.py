@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import ctypes
-import importlib.util
 import json
 import os
 import subprocess
-import time
 from importlib.metadata import distribution
 
 from meta_face.tools.registry import (
-    analysis_tools_requested,
     detectron2_tools_requested,
     dlib_tools_requested,
     insightface_tools_requested,
@@ -56,81 +53,26 @@ def require_insightface_runtime() -> None:
         ) from None
 
 
-def _debug_log_dlib(hypothesis_id: str, message: str, data: dict) -> None:
-    # #region agent log
-    try:
-        with open(
-            "/projects/spring_photography/meta_face/.cursor/debug-8b7781.log",
-            "a",
-            encoding="utf-8",
-        ) as fh:
-            fh.write(
-                json.dumps(
-                    {
-                        "sessionId": "8b7781",
-                        "runId": "pre-fix",
-                        "hypothesisId": hypothesis_id,
-                        "location": "deps.py:require_dlib_runtime",
-                        "message": message,
-                        "data": data,
-                        "timestamp": int(time.time() * 1000),
-                    }
-                )
-                + "\n"
-            )
-    except OSError:
-        pass
-    # #endregion
-
-
 def require_dlib_runtime() -> None:
-    """Ensure face_recognition (dlib) is importable before dlib pipeline jobs run."""
-    pkg_spec = importlib.util.find_spec("face_recognition")
-    dlib_spec = importlib.util.find_spec("dlib")
-    # #region agent log
-    _debug_log_dlib(
-        "A",
-        "package discovery before import",
-        {
-            "face_recognition_found": pkg_spec is not None,
-            "face_recognition_origin": getattr(pkg_spec, "origin", None),
-            "dlib_found": dlib_spec is not None,
-            "dlib_origin": getattr(dlib_spec, "origin", None),
-        },
-    )
-    # #endregion
+    """Ensure dlib HOG models load without importing face_recognition's CUDA CNN."""
+    try:
+        import dlib  # noqa: F401
+        import face_recognition_models  # noqa: F401
+    except ImportError:
+        raise PipelineDependencyError(
+            "dlib/face_recognition_models are not installed. Install the project "
+            "dependencies: pip install -e ."
+        ) from None
+    from meta_face.config import DLIB_MODEL
+
+    if DLIB_MODEL != "cnn":
+        return
     try:
         import face_recognition  # noqa: F401
-        # #region agent log
-        _debug_log_dlib("D", "face_recognition import succeeded", {})
-        # #endregion
-    except ImportError as exc:
-        # #region agent log
-        _debug_log_dlib(
-            "D",
-            "ImportError during face_recognition import",
-            {"exc_type": type(exc).__name__, "exc_msg": str(exc)},
-        )
-        # #endregion
+    except ImportError:
         raise PipelineDependencyError(
-            "face_recognition is not installed. Install the project dependencies: "
-            "pip install -e .\n"
-            "If dlib failed to build, install system packages first: "
-            "sudo apt install cmake build-essential"
-        ) from None
-    except Exception as exc:
-        # #region agent log
-        _debug_log_dlib(
-            "C",
-            "non-ImportError during face_recognition import",
-            {"exc_type": type(exc).__name__, "exc_msg": str(exc)},
-        )
-        # #endregion
-        raise PipelineDependencyError(
-            "face_recognition failed to import (dlib may not be compiled). "
-            f"Original error: {exc}\n"
-            "Install build tools: sudo apt install cmake build-essential, then "
-            "pip install --force-reinstall face_recognition"
+            "face_recognition is required when META_FACE_DLIB_MODEL=cnn. "
+            "Install the project dependencies: pip install -e ."
         ) from None
 
 
@@ -243,7 +185,10 @@ def require_inference_runtime(tools: list[str] | None = None) -> None:
         require_dlib_runtime()
     if detectron2_tools_requested(tools):
         require_detectron2_runtime()
-    if analysis_tools_requested(tools):
+    from meta_face.config import CROP_ANALYSIS_TOOLS
+    from meta_face.tools.registry import validate_tools
+
+    if set(validate_tools(tools)) & CROP_ANALYSIS_TOOLS:
         require_insightface_runtime()
 
 

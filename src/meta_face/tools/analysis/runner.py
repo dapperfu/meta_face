@@ -7,6 +7,8 @@ from typing import Any
 
 import numpy as np
 
+from meta_face.config import CROP_ANALYSIS_TOOLS
+
 from meta_face.tools.analysis.crops import (
     face_contexts_from_insightface_faces,
     load_scrfd_face_contexts,
@@ -51,7 +53,7 @@ def run_pending_analysis_tools(
         image_bgr,
         doc=doc,
         insightface_faces=insightface_faces,
-    )
+    ) if set(tool_names) & CROP_ANALYSIS_TOOLS else []
     results: dict[str, dict[str, Any]] = {}
     for tool in tool_names:
         issue = tool_availability(tool)

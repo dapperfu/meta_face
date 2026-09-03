@@ -1,0 +1,14 @@
+{
+  "steps": [
+    {
+      "id": "matches",
+      "call": "find",
+      "kwargs": {
+        "img_path": "/photos/query.jpg",
+        "db_path": "/photos/gallery",
+        "model_name": "Facenet512",
+        "detector_backend": "retinaface"
+      }
+    }
+  ]
+}

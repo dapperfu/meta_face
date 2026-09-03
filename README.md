@@ -49,12 +49,14 @@ mf scan /path/to/photos --run-now
 | `mf info PATH` | Show face data from a sidecar (`--json` for raw output) |
 | `mf backends` | List detection backends and availability |
 | `mf tools` | List all face tools and optional-dep availability |
+| `mf sdk list/run` | Discover and invoke DeepFace, UniFace and Py-Feat public APIs |
+| `mf normalize-coordinates PATH` | Preview/migrate geometry to clamped `[0, 1]` fractions (`--write` applies) |
 | `mf download` | Download model weights (`--backend dlib`, `detectron2`, `analysis`, or `all`) |
 | `mf failed` | Show tracebacks for failed RQ jobs |
 
 **Tool aliases:** `insightface` (scrfd + arcface), `face_recognition` (dlib_detect + dlib_embed), `hdbscan` (cluster), `hdbscan_dlib` (cluster_dlib).
 
-**Analysis meta-tools** (crop-based; require scrfd): `expression`, `emotion`, `gaze`, `au`, `blendshapes`, `attributes`, `parsing`, `liveness`, `face_analysis`, `all_analysis`. Install optional deps first, e.g. `pip install -e ".[expression]"`. List availability with `mf tools`.
+**Analysis meta-tools** (most require SCRFD crops; DeepFace, UniFace and Py-Feat detect independently): `expression`, `emotion`, `gaze`, `au`, `blendshapes`, `attributes`, `parsing`, `liveness`, `face_analysis`, `all_analysis`. Install optional deps first, e.g. `pip install -e ".[expression]"`. List availability with `mf tools`.
 
 Default `mf scan` runs insightface, face_recognition, and detectron2 (no clustering). Cluster explicitly with `mf cluster PATH` or add `hdbscan` to `--tools`:
 
@@ -112,6 +114,10 @@ For contributors, add test/lint tools with `pip install -e ".[dev]"`. Optional a
 Set `ROOT` in meta-analysis notebooks (default `/tun/steph_pictures`). See [`notebooks/README.md`](notebooks/README.md).
 
 ## Configuration
+
+DeepFace, UniFace and Py-Feat detect independently and expose their full public SDK APIs. Install with `pip install -e '.[sdk-tools]'`. See [SDK tools and recipes](docs/SDK_TOOLS.md).
+
+New sidecars store image boxes and landmarks as normalized width/height fractions in `[0, 1]`, clamping out-of-frame predictions. Readers resolve them for the current image size; legacy formats remain supported. See [coordinate schema and migration](docs/COORDINATES.md).
 
 Environment variables (`META_FACE_REDIS_HOST`, `META_FACE_MODEL`, `META_FACE_DATA`, etc.) are defined in [`src/meta_face/config.py`](src/meta_face/config.py).
 

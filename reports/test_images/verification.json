@@ -1,0 +1,24 @@
+{
+  "source_images_unchanged": 24,
+  "sidecars_readable": 24,
+  "tool_sections": {
+    "normalized": 240
+  },
+  "record_counts": {
+    "bisenet": 378,
+    "detectron2": 229,
+    "dlib_detect": 255,
+    "face_antispoof_onnx": 378,
+    "fer_plus": 378,
+    "mediapipe_blendshapes": 295,
+    "opencv_fer": 378,
+    "scrfd": 378,
+    "scrfd_640": 326,
+    "yakhyo_gaze": 378
+  },
+  "overlays_verified": 24,
+  "crop_sheets_verified": 24,
+  "segmentation_masks_verified": 378,
+  "geometry_round_trip": "passed after source-image clipping",
+  "mediapipe_record_shapes": "passed"
+}

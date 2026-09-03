@@ -1,0 +1,17 @@
+{
+  "steps": [
+    {
+      "id": "model",
+      "call": "MODNet"
+    },
+    {
+      "id": "matte",
+      "call": "$model.predict",
+      "args": [
+        {
+          "$image": "/photos/portrait.jpg"
+        }
+      ]
+    }
+  ]
+}

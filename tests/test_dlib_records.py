@@ -8,6 +8,7 @@ from meta_face.tools.dlib_detect import (
     location_to_bbox,
     locations_to_dlib_faces,
     faces_to_records,
+    named_landmarks_from_parts,
 )
 
 
@@ -42,3 +43,11 @@ def test_faces_to_records_shape() -> None:
 def test_dlib_face_dataclass() -> None:
     face = DlibFace(location=(0, 1, 2, 3), landmarks=None)
     assert face.location == (0, 1, 2, 3)
+
+
+def test_named_landmarks_from_68_parts() -> None:
+    parts = [(i, i) for i in range(68)]
+    named = named_landmarks_from_parts(parts)
+    assert len(named["chin"]) == 17
+    assert named["chin"][0] == (0, 0)
+    assert named["bottom_lip"][-1] == (67, 67)

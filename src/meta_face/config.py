@@ -7,33 +7,33 @@ from pathlib import Path
 
 # Tool versions written into sidecar face.<tool>.version keys.
 TOOL_VERSIONS: dict[str, str] = {
-    "scrfd": "1.1.0",
+    "scrfd": "2.0.0",
     "arcface": "1.1.0",
-    "detectron2": "1.1.0",
-    "dlib_detect": "1.1.0",
-    "dlib_embed": "1.1.0",
+    "detectron2": "2.0.0",
+    "dlib_detect": "2.1.0",
+    "dlib_embed": "1.2.0",
     "cluster": "1.1.0",
     "cluster_dlib": "1.1.0",
     # Phase 1: emotion / expression (ONNX, low friction)
     "emotiefflib": "1.1.0",
-    "opencv_fer": "1.0.0",
-    "mediapipe_blendshapes": "1.0.0",
-    "fer_plus": "1.0.0",
+    "opencv_fer": "1.1.0",
+    "mediapipe_blendshapes": "1.1.0",
+    "fer_plus": "1.1.0",
     # Phase 2: AU / gaze SDKs
     "libreface": "1.0.0",
     "openface3": "1.0.0",
-    "yakhyo_gaze": "1.0.0",
+    "yakhyo_gaze": "1.1.0",
     "l2cs_net": "1.0.0",
     # Phase 3: attributes, parsing, liveness, UniFace
     "fairface": "1.0.0",
-    "bisenet": "1.0.0",
-    "face_antispoof_onnx": "1.0.0",
+    "bisenet": "1.1.0",
+    "face_antispoof_onnx": "1.1.0",
     "face_anti_spoofing": "1.0.0",
-    "uniface": "1.0.0",
+    "uniface": "2.0.0",
     # Phase 4: heavier optional wrappers
-    "py_feat": "1.0.0",
+    "py_feat": "2.0.0",
     "emonet": "1.0.0",
-    "deepface": "1.0.0",
+    "deepface": "2.0.0",
     "inspireface": "1.0.0",
 }
 
@@ -59,6 +59,10 @@ ANALYSIS_TOOLS: frozenset[str] = frozenset(
         "inspireface",
     }
 )
+
+# These SDKs detect their own faces; their face indices belong to their own namespace.
+INDEPENDENT_ANALYSIS_TOOLS = frozenset({"deepface", "uniface", "py_feat"})
+CROP_ANALYSIS_TOOLS = ANALYSIS_TOOLS - INDEPENDENT_ANALYSIS_TOOLS
 
 # Per-image tools vs collection-level aggregate tools.
 DETECTION_TOOLS: frozenset[str] = frozenset(
@@ -223,10 +227,8 @@ def cluster_tool_for_embedding(embedding_tool: str) -> str:
 
 
 def detectron2_dir() -> Path:
-    """Directory for Detectron2 config and downloaded weights."""
-    path = ensure_data_dir() / "detectron2"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    """Directory for Detectron2 config and downloaded weights (created on write)."""
+    return DATA_DIR / "detectron2"
 
 
 def default_detectron2_config_path() -> Path:
@@ -257,9 +259,7 @@ def normalize_embedding_tool(name: str) -> str:
 
 def analysis_models_dir() -> Path:
     """Directory for downloaded ONNX / MediaPipe analysis model weights."""
-    path = ensure_data_dir() / "analysis_models"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    return DATA_DIR / "analysis_models"
 
 
 def opencv_fer_model_path() -> Path:

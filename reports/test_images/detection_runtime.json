@@ -1,0 +1,10 @@
+{
+  "scrfd": "ready",
+  "dlib_detect": "ready via direct CPU HOG adapter",
+  "detectron2": "ready",
+  "device": "CPU",
+  "onnx_providers": [
+    "AzureExecutionProvider",
+    "CPUExecutionProvider"
+  ]
+}

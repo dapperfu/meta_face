@@ -7,6 +7,8 @@ from typing import Any
 
 import numpy as np
 
+from meta_face.tools.sidecar_encode import json_safe
+
 
 class FaceDetectionBackend(ABC):
     """Detect faces in a single image array (BGR, OpenCV layout)."""
@@ -37,16 +39,5 @@ class FaceDetectionBackend(ABC):
             )
 
     def to_records(self, detections: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Normalize detections to sidecar face record shape."""
-        records: list[dict[str, Any]] = []
-        for det in detections:
-            bbox = [float(x) for x in det["bbox"][:4]]
-            record: dict[str, Any] = {
-                "bbox": bbox,
-                "det_score": float(det["det_score"]),
-            }
-            landmarks = det.get("landmarks")
-            if landmarks is not None:
-                record["landmarks"] = [[float(x), float(y)] for x, y in landmarks]
-            records.append(record)
-        return records
+        """Pass through all detection fields for sidecar storage."""
+        return [json_safe(det) for det in detections]

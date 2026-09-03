@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from meta_face.config import AGGREGATE_TOOLS, ALL_TOOLS, ANALYSIS_TOOLS, PER_IMAGE_TOOLS
+from meta_face.config import (
+    AGGREGATE_TOOLS, ALL_TOOLS, ANALYSIS_TOOLS, CROP_ANALYSIS_TOOLS, PER_IMAGE_TOOLS,
+)
 
 TOOL_ALIASES: dict[str, str] = {
     "hdbscan": "cluster",
@@ -92,7 +94,7 @@ def analysis_tools_requested(tools: list[str]) -> bool:
 def expand_dependencies(tools: list[str]) -> list[str]:
     names = validate_tools(tools)
     result: list[str] = []
-    if "scrfd" in names or "arcface" in names or analysis_tools_requested(names):
+    if set(names) & ({"scrfd", "arcface"} | CROP_ANALYSIS_TOOLS):
         if "scrfd" not in result:
             result.append("scrfd")
         if "arcface" in names and "arcface" not in result:

@@ -30,7 +30,7 @@ flowchart LR
 ```
 
 ## Sidecar key layout (per image .scar)
-- `face.scrfd.version`, `face.scrfd.processed_at`, `face.scrfd.faces` = list of `{bbox:[x1,y1,x2,y2], landmarks:[[x,y]*5], det_score}`
+- `face.scrfd.version`, `face.scrfd.processed_at`, `face.scrfd.faces` = list of `{bbox, landmarks, det_score, age, gender, pose, landmark_*}`
 - `face.arcface.version`, `face.arcface.processed_at`, `face.arcface.embeddings` = list of float vectors (aligned 1:1 with scrfd faces)
 - `face.cluster.version`, `face.cluster.processed_at`, `face.cluster.labels` = per-face cluster ids (-1 = noise)
 
