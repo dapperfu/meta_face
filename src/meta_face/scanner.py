@@ -36,21 +36,27 @@ def normalize_tools(tools: list[str]) -> list[str]:
     return normalized
 
 
-# Backend pipelines enqueued as separate RQ jobs (one job per group).
-BACKEND_JOB_GROUPS: tuple[tuple[str, frozenset[str]], ...] = (
+# Detection pipelines stay bundled (one detector pass). Each analysis tool
+# is its own RQ job so MediaPipe, ONNX heads, and detection write independently.
+DETECTION_JOB_GROUPS: tuple[tuple[str, frozenset[str]], ...] = (
     ("insightface", frozenset({"scrfd", "arcface"})),
     ("face_recognition", frozenset({"dlib_detect", "dlib_embed"})),
-    ("analysis", ANALYSIS_TOOLS),
 )
+BACKEND_JOB_GROUPS = DETECTION_JOB_GROUPS
 
 
 def resolve_backend_job_groups(per_image_tools: list[str]) -> list[tuple[str, list[str]]]:
-    """Split per-image tools into one (backend_key, tools) job per backend pipeline."""
+    """Split per-image tools into one RQ job per detection pipeline or analysis tool."""
     groups: list[tuple[str, list[str]]] = []
-    for backend_key, members in BACKEND_JOB_GROUPS:
+    claimed: set[str] = set()
+    for backend_key, members in DETECTION_JOB_GROUPS:
         group_tools = [tool for tool in per_image_tools if tool in members]
         if group_tools:
             groups.append((backend_key, group_tools))
+            claimed.update(group_tools)
+    for tool in per_image_tools:
+        if tool in ANALYSIS_TOOLS and tool not in claimed:
+            groups.append((tool, [tool]))
     return groups
 
 

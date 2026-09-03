@@ -8,11 +8,13 @@ from redis import Redis
 from rq import Queue
 
 from meta_face.config import (
+    CROP_ANALYSIS_TOOLS,
     RQ_CLUSTER_QUEUE_NAME,
     RQ_JOB_TIMEOUT,
     RQ_QUEUE_NAME,
     RQ_SCAN_QUEUE_NAME,
     REDIS_URL,
+    rq_job_timeout,
 )
 
 
@@ -56,23 +58,35 @@ def enqueue_process_image(
     tools: list[str],
     force: bool = False,
 ) -> list[str]:
-    """Enqueue one RQ job per backend pipeline for an image. Returns job ids."""
+    """Enqueue one RQ job per detection pipeline or analysis tool. Returns job ids."""
     from meta_face.jobs import job_id_for_path, process_image
     from meta_face.scanner import needs_processing, resolve_backend_job_groups
 
     queue = get_queue()
     job_ids: list[str] = []
+    detect_job = None
     for backend_key, group_tools in resolve_backend_job_groups(tools):
         if not force and not needs_processing(image_path, group_tools, force=False):
             continue
+        enqueue_kwargs: dict[str, object] = {
+            "job_id": job_id_for_path(f"image-{backend_key}", image_path),
+            "failure_ttl": 86400,
+            "job_timeout": rq_job_timeout(backend_key),
+        }
+        if (
+            detect_job is not None
+            and set(group_tools) & CROP_ANALYSIS_TOOLS
+        ):
+            enqueue_kwargs["depends_on"] = detect_job
         job = queue.enqueue(
             process_image,
             str(image_path),
             group_tools,
             force,
-            job_id=job_id_for_path(f"image-{backend_key}", image_path),
-            failure_ttl=86400,
+            **enqueue_kwargs,
         )
+        if backend_key == "insightface":
+            detect_job = job
         job_ids.append(job.id)
     return job_ids
 

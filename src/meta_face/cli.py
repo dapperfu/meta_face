@@ -77,6 +77,9 @@ def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
         "expression/emotion/gaze/au/blendshapes/attributes/parsing/liveness meta-tools, "
         "or individual tools (emotiefflib, opencv_fer, mediapipe_blendshapes, libreface, "
         "openface3, yakhyo_gaze, fairface, bisenet, uniface, deepface, ...). "
+        "Sports-review phases: detect (scrfd), analysis (opencv_fer, fer_plus, "
+        "yakhyo_gaze, bisenet, face_antispoof_onnx), mediapipe. "
+        "Each analysis tool is a separate RQ job. "
         "Default runs insightface and face_recognition (no clustering)."
     ),
 )
@@ -229,12 +232,25 @@ def _scan_inline(
                 for subdir in child_dirs:
                     executor.submit(scan_dir, subdir)
 
+            from meta_face.scanner import resolve_backend_job_groups
+
             for image_path in to_enqueue:
-                result = process_image(str(image_path), per_image_tools, force=force)
-                if result.get("status") == "ok":
+                image_ok = False
+                image_faces = 0
+                for backend_key, group_tools in resolve_backend_job_groups(per_image_tools):
+                    try:
+                        result = process_image(str(image_path), group_tools, force=force)
+                    except Exception as exc:
+                        with result_lock:
+                            errors.append(f"{image_path} [{backend_key}]: {exc}")
+                        continue
+                    if result.get("status") == "ok":
+                        image_ok = True
+                        image_faces = max(image_faces, int(result.get("face_count", 0)))
+                if image_ok:
                     with result_lock:
                         processed += 1
-                        faces_total += int(result.get("face_count", 0))
+                        faces_total += image_faces
         except Exception as exc:
             with result_lock:
                 errors.append(f"{dir_path}: {exc}")

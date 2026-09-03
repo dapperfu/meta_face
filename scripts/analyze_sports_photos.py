@@ -2,6 +2,12 @@
 
 Detection and geometry only: no recognition or demographic heads are loaded.
 Original JPEGs are read-only. Results use the project's normalized sidecars.
+
+Prefer the application pipeline for the same phases as independent RQ jobs:
+
+    mf scan test_images --tools detect
+    mf scan test_images --tools analysis
+    mf scan test_images --tools mediapipe
 """
 from __future__ import annotations
 

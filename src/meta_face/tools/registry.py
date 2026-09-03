@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 from meta_face.config import (
-    AGGREGATE_TOOLS, ALL_TOOLS, ANALYSIS_TOOLS, CROP_ANALYSIS_TOOLS, PER_IMAGE_TOOLS,
+    AGGREGATE_TOOLS,
+    ALL_TOOLS,
+    ANALYSIS_TOOLS,
+    CROP_ANALYSIS_TOOLS,
+    PER_IMAGE_TOOLS,
+    SPORTS_ANALYSIS_TOOLS,
 )
 
 TOOL_ALIASES: dict[str, str] = {
     "hdbscan": "cluster",
     "hdbscan_dlib": "cluster_dlib",
+    "mediapipe": "mediapipe_blendshapes",
 }
 
 # Meta-tool names that expand to several real tools. "insightface" is the
@@ -16,6 +22,9 @@ TOOL_ALIASES: dict[str, str] = {
 TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "insightface": ("scrfd", "arcface"),
     "face_recognition": ("dlib_detect", "dlib_embed"),
+    # Sports-review phases: detection only, ONNX crop analysis, MediaPipe last.
+    "detect": ("scrfd",),
+    "analysis": SPORTS_ANALYSIS_TOOLS,
     # Analysis meta-tools (crop-based; require scrfd).
     "expression": (
         "emotiefflib",

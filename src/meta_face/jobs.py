@@ -17,7 +17,14 @@ from meta_face.deps import (
     require_insightface_runtime,
 )
 from meta_face.imaging import load_image
-from meta_face.sidecar import has_tool, load_or_create, tool_is_current, update_sidecar, write_tool_result
+from meta_face.sidecar import (
+    has_tool,
+    load_or_create,
+    sidecar_path_for_media,
+    tool_is_current,
+    update_sidecar,
+    write_tool_result,
+)
 from meta_face.tools.registry import expand_dependencies
 
 logger = logging.getLogger(__name__)
@@ -27,6 +34,20 @@ def _tools_to_run(doc: object, tools: list[str], force: bool) -> list[str]:
     if force:
         return tools
     return [t for t in tools if not tool_is_current(doc, t)]  # type: ignore[arg-type]
+
+
+def _write_tool_payload(
+    media_path: Path,
+    tool: str,
+    payload: dict[str, Any],
+    image_size: tuple[int, int],
+) -> Path:
+    """Hold the sidecar lock only long enough to merge one tool's result."""
+
+    def _patch(doc: object) -> None:
+        write_tool_result(doc, tool, payload, image_size=image_size)  # type: ignore[arg-type]
+
+    return update_sidecar(media_path, _patch)
 
 
 def process_image(image_path: str, tools: list[str], force: bool = False) -> dict[str, Any]:
@@ -42,8 +63,11 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
         return {"status": "skipped", "path": str(media_path), "reason": "all_tools_present"}
 
     image = load_image(media_path)
+    h_img, w_img = image.shape[:2]
+    image_size = (w_img, h_img)
     face_count = 0
     pending_set = set(pending)
+    pending_writes: list[tuple[str, dict[str, Any]]] = []
 
     insightface_faces = None
     dlib_rgb_faces: tuple[Any, list[Any]] | None = None
@@ -71,69 +95,67 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
         dlib_rgb_faces = (rgb, dlib_faces)
         face_count = max(face_count, len(dlib_faces))
 
-    def _patch(doc: object) -> None:
-        nonlocal face_count
-        h_img, w_img = image.shape[:2]
-        image_size = (w_img, h_img)
-        if insightface_faces is not None:
-            if "scrfd" in pending_set:
-                from meta_face.tools.face_record import scrfd_to_sidecar_payload
+    if insightface_faces is not None:
+        if "scrfd" in pending_set:
+            from meta_face.tools.face_record import scrfd_to_sidecar_payload
 
-                write_tool_result(
-                    doc,
+            pending_writes.append(
+                (
                     "scrfd",
                     scrfd_to_sidecar_payload(insightface_faces, image_size=image_size),
-                    image_size=image_size,
-                )  # type: ignore[arg-type]
-            if "arcface" in pending_set:
-                from meta_face.tools.arcface import arcface_to_sidecar_payload
-
-                write_tool_result(
-                    doc,
-                    "arcface",
-                    arcface_to_sidecar_payload(insightface_faces),
-                    image_size=image_size,
-                )  # type: ignore[arg-type]
-
-        if dlib_rgb_faces is not None:
-            from meta_face.tools.dlib_detect import dlib_detect_to_sidecar_payload
-            from meta_face.tools.dlib_embed import dlib_embed_to_sidecar_payload
-
-            rgb, dlib_faces = dlib_rgb_faces
-            h_img, w_img = image.shape[:2]
-            if "dlib_detect" in pending_set:
-                write_tool_result(
-                    doc,
-                    "dlib_detect",
-                    dlib_detect_to_sidecar_payload(
-                        dlib_faces,
-                        image_size=(w_img, h_img),
-                    ),
-                    image_size=image_size,
-                )  # type: ignore[arg-type]
-            if "dlib_embed" in pending_set:
-                write_tool_result(
-                    doc,
-                    "dlib_embed",
-                    dlib_embed_to_sidecar_payload(rgb, dlib_faces),
-                    image_size=image_size,
-                )  # type: ignore[arg-type]
-
-        if pending_analysis:
-            from meta_face.tools.analysis.runner import run_pending_analysis_tools
-
-            analysis_results = run_pending_analysis_tools(
-                media_path,
-                image,
-                pending_analysis,
-                doc=doc,
-                insightface_faces=insightface_faces,
+                )
             )
-            for tool_name, payload in analysis_results.items():
-                face_count = max(face_count, int(payload.get("face_count", 0)))
-                write_tool_result(doc, tool_name, payload, image_size=image_size)
+        if "arcface" in pending_set:
+            from meta_face.tools.arcface import arcface_to_sidecar_payload
 
-    scar_path = update_sidecar(media_path, _patch)
+            pending_writes.append(("arcface", arcface_to_sidecar_payload(insightface_faces)))
+
+    if dlib_rgb_faces is not None:
+        from meta_face.tools.dlib_detect import dlib_detect_to_sidecar_payload
+        from meta_face.tools.dlib_embed import dlib_embed_to_sidecar_payload
+
+        rgb, dlib_faces = dlib_rgb_faces
+        if "dlib_detect" in pending_set:
+            pending_writes.append(
+                (
+                    "dlib_detect",
+                    dlib_detect_to_sidecar_payload(dlib_faces, image_size=image_size),
+                )
+            )
+        if "dlib_embed" in pending_set:
+            pending_writes.append(("dlib_embed", dlib_embed_to_sidecar_payload(rgb, dlib_faces)))
+
+    analysis_errors: list[str] = []
+    if pending_analysis:
+        from meta_face.tools.analysis.runner import run_pending_analysis_tools
+
+        for tool_name in pending_analysis:
+            try:
+                analysis_results = run_pending_analysis_tools(
+                    media_path,
+                    image,
+                    [tool_name],
+                    doc=doc,
+                    insightface_faces=insightface_faces,
+                )
+            except Exception as exc:
+                logger.exception("analysis tool %s failed for %s", tool_name, media_path)
+                analysis_errors.append(f"{tool_name}: {exc}")
+                continue
+            payload = analysis_results[tool_name]
+            face_count = max(face_count, int(payload.get("face_count", 0)))
+            pending_writes.append((tool_name, payload))
+
+    scar_path = sidecar_path_for_media(media_path)
+    for tool_name, payload in pending_writes:
+        scar_path = _write_tool_payload(media_path, tool_name, payload, image_size)
+
+    if analysis_errors:
+        raise RuntimeError(
+            "Analysis tool(s) failed after independent sidecar writes: "
+            + "; ".join(analysis_errors)
+        )
+
     return {
         "status": "ok",
         "path": str(media_path),

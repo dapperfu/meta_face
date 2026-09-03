@@ -56,3 +56,14 @@ def test_face_analysis_group_is_phase1_subset() -> None:
     members = set(TOOL_GROUPS["face_analysis"])
     assert members <= ANALYSIS_TOOLS
     assert "emotiefflib" in members
+
+
+def test_sports_analysis_group_excludes_mediapipe() -> None:
+    assert "mediapipe_blendshapes" not in TOOL_GROUPS["analysis"]
+    assert list(TOOL_GROUPS["analysis"]) == [
+        "opencv_fer",
+        "fer_plus",
+        "yakhyo_gaze",
+        "bisenet",
+        "face_antispoof_onnx",
+    ]

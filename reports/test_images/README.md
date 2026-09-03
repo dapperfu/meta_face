@@ -121,7 +121,16 @@ All 15 source hashes, tool record counts, finite model outputs, and sidecar geom
 - [Detector overlap details](detector_comparison.csv)
 - [Similar-frame candidates](similar_frames.csv)
 
-Reproduce from the repository root using the existing environment:
+Reproduce from the repository root using the existing environment. The application pipeline now runs the same three phases as independent RQ jobs that each write their own sidecar section:
+
+```bash
+venv_meta_face/bin/mf scan test_images --tools detect
+venv_meta_face/bin/mf scan test_images --tools analysis
+venv_meta_face/bin/mf scan test_images --tools mediapipe
+venv_meta_face/bin/python scripts/report_sports_photos.py
+```
+
+The report builder still reads JSON produced by the local script. To refresh those JSON files as well:
 
 ```bash
 venv_meta_face/bin/python scripts/analyze_sports_photos.py --phase detect
@@ -129,5 +138,3 @@ venv_meta_face/bin/python scripts/analyze_sports_photos.py --phase analysis
 venv_meta_face/bin/python scripts/analyze_sports_photos.py --phase mediapipe
 venv_meta_face/bin/python scripts/report_sports_photos.py
 ```
-
-Inference stages reuse completed JSON files by default. `--force` recomputes the requested stage; rerun downstream stages after changing detections. Do not substitute the ordinary `mf scan --tools all_analysis` command for this run, because its current wrappers differ as documented above.

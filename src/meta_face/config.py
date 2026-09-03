@@ -59,6 +59,15 @@ ANALYSIS_TOOLS: frozenset[str] = frozenset(
     }
 )
 
+# Sports-review ONNX crop tools (the `analysis` meta-tool; MediaPipe is separate).
+SPORTS_ANALYSIS_TOOLS: tuple[str, ...] = (
+    "opencv_fer",
+    "fer_plus",
+    "yakhyo_gaze",
+    "bisenet",
+    "face_antispoof_onnx",
+)
+
 # These SDKs detect their own faces; their face indices belong to their own namespace.
 INDEPENDENT_ANALYSIS_TOOLS = frozenset({"deepface", "uniface", "py_feat"})
 CROP_ANALYSIS_TOOLS = ANALYSIS_TOOLS - INDEPENDENT_ANALYSIS_TOOLS
@@ -111,6 +120,21 @@ RQ_QUEUE_NAME: str = os.environ.get("META_FACE_QUEUE", "meta-face")
 RQ_SCAN_QUEUE_NAME: str = os.environ.get("META_FACE_SCAN_QUEUE", "meta-face-scan")
 RQ_CLUSTER_QUEUE_NAME: str = os.environ.get("META_FACE_CLUSTER_QUEUE", "meta-face-cluster")
 RQ_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_JOB_TIMEOUT", "3600"))
+RQ_DETECT_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_DETECT_JOB_TIMEOUT", "600"))
+RQ_ANALYSIS_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_ANALYSIS_JOB_TIMEOUT", "900"))
+RQ_MEDIAPIPE_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_MEDIAPIPE_JOB_TIMEOUT", "1800"))
+
+
+def rq_job_timeout(backend_key: str) -> int:
+    """Per-pipeline RQ timeout so one slow tool does not share another job's budget."""
+    key = backend_key.strip().lower()
+    if key in {"insightface", "face_recognition", "scrfd", "arcface", "dlib_detect", "dlib_embed"}:
+        return RQ_DETECT_JOB_TIMEOUT
+    if key in {"mediapipe_blendshapes", "mediapipe"}:
+        return RQ_MEDIAPIPE_JOB_TIMEOUT
+    if key in ANALYSIS_TOOLS:
+        return RQ_ANALYSIS_JOB_TIMEOUT
+    return RQ_JOB_TIMEOUT
 
 # Local data directory for FAISS index and metadata sidecar files.
 DATA_DIR: Path = Path(os.environ.get("META_FACE_DATA", Path.home() / ".meta_face"))

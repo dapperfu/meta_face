@@ -33,6 +33,33 @@ def test_validate_tools_rejects_unknown() -> None:
         validate_tools(["not_a_tool"])
 
 
+def test_sports_phase_meta_tools_expand() -> None:
+    assert validate_tools(["detect"]) == ["scrfd"]
+    assert validate_tools(["mediapipe"]) == ["mediapipe_blendshapes"]
+    assert validate_tools(["analysis"]) == [
+        "opencv_fer",
+        "fer_plus",
+        "yakhyo_gaze",
+        "bisenet",
+        "face_antispoof_onnx",
+    ]
+    combined = validate_tools(["detect", "analysis", "mediapipe"])
+    assert combined[0] == "scrfd"
+    assert "mediapipe_blendshapes" in combined
+    assert "opencv_fer" in combined
+    groups = resolve_backend_job_groups(resolve_per_image_tools(combined))
+    keys = [key for key, _ in groups]
+    assert keys[0] == "insightface"
+    assert keys[1:] == [
+        "opencv_fer",
+        "fer_plus",
+        "yakhyo_gaze",
+        "bisenet",
+        "face_antispoof_onnx",
+        "mediapipe_blendshapes",
+    ]
+
+
 def test_default_scan_runs_detection_without_clustering() -> None:
     assert DEFAULT_SCAN_META_TOOLS == (
         "insightface",
@@ -66,7 +93,11 @@ def test_resolve_backend_job_groups_includes_analysis() -> None:
     groups = resolve_backend_job_groups(per_image)
     keys = [key for key, _ in groups]
     assert "insightface" in keys
-    assert "analysis" in keys
+    assert "opencv_fer" in keys
+    assert "mediapipe_blendshapes" in keys
+    assert "analysis" not in keys
+    assert groups[keys.index("opencv_fer")][1] == ["opencv_fer"]
+    assert groups[keys.index("mediapipe_blendshapes")][1] == ["mediapipe_blendshapes"]
 
 
 def test_resolve_backend_job_groups_single_backend() -> None:

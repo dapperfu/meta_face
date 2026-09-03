@@ -25,13 +25,22 @@ The pictures below come from the `test_images/` folder in this project.
 
 The green box is a face the tool found. An orange box is also a face, but it is very small in the photo.
 
-**Solo photo.** One face. Easy. The yellow arrow is a **gaze guess** (Yakhyo): which way the eyes look.
+**Solo photos (2012).** These two files are the **full analysis** examples: `test_images/20120608_114901.600.jpg` and `test_images/20120608_115148.030.jpg`. Each `.scar` file has SCRFD (find face), Yakhyo gaze, FairFace, BiSeNet (skin/hair map), OpenCV FER + FER+ (expression), MediaPipe blendshapes, and MiniFASNet liveness.
+
+The yellow arrow is a **gaze guess** (Yakhyo): which way the eyes look.
 
 ![Solo photo with one face box and a gaze arrow](docs/readme_examples/find_faces_solo.jpg)
 
-The same face also gets extra guesses: expression, a skin/hair map, Yakhyo gaze numbers, and a FairFace label. These are model guesses, not facts.
+The same face also gets extra guesses. These are model guesses, not facts. A still photo cannot prove a live person.
 
 ![Solo face extras: photo, parsing map, Yakhyo and FairFace](docs/readme_examples/face_extras_solo.jpg)
+
+Scan them again with:
+
+```bash
+mf scan test_images/20120608_114901.600.jpg --run-now --force \
+  --tools scrfd,yakhyo_gaze,fairface,bisenet,opencv_fer,fer_plus,mediapipe_blendshapes,face_antispoof_onnx
+```
 
 **Small group.** Faces are larger and easier to find.
 
@@ -173,7 +182,12 @@ Default `mf scan` runs InsightFace and face_recognition. It does not group peopl
 ```bash
 mf scan /photos --tools insightface,face_recognition,hdbscan
 mf scan /photos --tools scrfd,expression --run-now
+mf scan /photos --tools detect
+mf scan /photos --tools analysis
+mf scan /photos --tools mediapipe
 ```
+
+`detect`, `analysis`, and `mediapipe` match the sports-review phases. Each analysis tool is its own Redis Queue job, writes its own sidecar section under the file lock, and has its own timeout (detection 10 minutes, ONNX analysis 15 minutes, MediaPipe 30 minutes; override with `META_FACE_DETECT_JOB_TIMEOUT`, `META_FACE_ANALYSIS_JOB_TIMEOUT`, `META_FACE_MEDIAPIPE_JOB_TIMEOUT`). Crop analysis jobs wait for SCRFD on that photo.
 
 More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordinates](docs/COORDINATES.md).
 
@@ -204,13 +218,22 @@ More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordina
 
 绿框是找到的脸。橙框也是脸，但在照片里非常小。
 
-**单人照片。** 一张脸。比较容易。黄箭头是**视线猜测**（Yakhyo）：眼睛大概在看哪个方向。
+**单人照片（2012）。** 这两张是**完整分析**示例：`test_images/20120608_114901.600.jpg` 和 `test_images/20120608_115148.030.jpg`。每张旁边的 `.scar` 里有 SCRFD（找脸）、Yakhyo 视线、FairFace、BiSeNet（皮肤/头发分区）、OpenCV FER 和 FER+（表情）、MediaPipe blendshapes，以及 MiniFASNet 活体分数。
+
+黄箭头是**视线猜测**（Yakhyo）：眼睛大概在看哪个方向。
 
 ![单人照片上的人脸框和视线箭头](docs/readme_examples/find_faces_solo.jpg)
 
-同一张脸还会有更多猜测：表情、皮肤/头发分区、Yakhyo 视线数字，以及 FairFace 标签。这些都是模型猜测，不是事实。
+同一张脸还会有更多猜测。这些都是模型猜测，不是事实。单张静态照片不能证明是真人。
 
 ![单人脸上的额外猜测：原图、分区图、Yakhyo 和 FairFace](docs/readme_examples/face_extras_solo.jpg)
+
+重新扫描可以用：
+
+```bash
+mf scan test_images/20120608_114901.600.jpg --run-now --force \
+  --tools scrfd,yakhyo_gaze,fairface,bisenet,opencv_fer,fer_plus,mediapipe_blendshapes,face_antispoof_onnx
+```
 
 **小组合影。** 脸更大，更容易找。
 
