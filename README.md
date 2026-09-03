@@ -25,6 +25,14 @@ The pictures below come from the `test_images/` folder in this project.
 
 The green box is a face the tool found. An orange box is also a face, but it is very small in the photo.
 
+**Solo photo.** One face. Easy. The yellow arrow is a **gaze guess** (Yakhyo): which way the eyes look.
+
+![Solo photo with one face box and a gaze arrow](docs/readme_examples/find_faces_solo.jpg)
+
+The same face also gets extra guesses: expression, a skin/hair map, Yakhyo gaze numbers, and a FairFace label. These are model guesses, not facts.
+
+![Solo face extras: photo, parsing map, Yakhyo and FairFace](docs/readme_examples/face_extras_solo.jpg)
+
 **Small group.** Faces are larger and easier to find.
 
 ![Small group photo with face boxes](docs/readme_examples/find_faces_group.jpg)
@@ -53,7 +61,7 @@ The word under each face is an **expression guess**. A guess can be wrong. Sungl
 
 Some tools do not only say “this is a face.” They color the pixels: skin, hair, eyes, mouth.
 
-Left: the photo. Right: the color map on the same face.
+Left: the photo. Right: the color map on the same face (from the solo picture above).
 
 ![Face photo next to a skin hair eye color map](docs/readme_examples/face_parsing.jpg)
 
@@ -198,6 +206,14 @@ More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordina
 
 绿框是找到的脸。橙框也是脸，但在照片里非常小。
 
+**单人照片。** 一张脸。比较容易。黄箭头是**视线猜测**（Yakhyo）：眼睛大概在看哪个方向。
+
+![单人照片上的人脸框和视线箭头](docs/readme_examples/find_faces_solo.jpg)
+
+同一张脸还会有更多猜测：表情、皮肤/头发分区、Yakhyo 视线数字，以及 FairFace 标签。这些都是模型猜测，不是事实。
+
+![单人脸上的额外猜测：原图、分区图、Yakhyo 和 FairFace](docs/readme_examples/face_extras_solo.jpg)
+
 **小组合影。** 脸更大，更容易找。
 
 ![小组合影上的人脸框](docs/readme_examples/find_faces_group.jpg)
@@ -226,7 +242,7 @@ More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordina
 
 有的工具不只说“这是一张脸”。它们会给像素上色：皮肤、头发、眼睛、嘴。
 
-左边：原图。右边：同一张脸上的彩色图。
+左边：原图。右边：同一张脸上的彩色图（来自上面的单人照片）。
 
 ![人脸原图和皮肤头发眼睛分区图](docs/readme_examples/face_parsing.jpg)
 
