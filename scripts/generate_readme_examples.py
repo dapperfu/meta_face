@@ -1,4 +1,4 @@
-"""Build compact README example images from test_images and reports."""
+"""Build compact README example images from remaining test_images (2008–2011)."""
 
 from __future__ import annotations
 
@@ -6,6 +6,10 @@ import csv
 from pathlib import Path
 
 import cv2
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,7 +18,6 @@ REPORTS = ROOT / "reports" / "test_images"
 OUT = ROOT / "docs" / "readme_examples"
 MAX_W = 800
 
-# CelebAMask-HQ / BiSeNet 19 classes (skin through cloth).
 _PARSE_COLORS = np.array(
     [
         [0, 0, 0],
@@ -41,6 +44,10 @@ _PARSE_COLORS = np.array(
 )
 
 
+def _is_kept_photo(name: str) -> bool:
+    return name.endswith(".jpg") and not name.startswith("2026")
+
+
 def _load_bgr(path: Path) -> np.ndarray:
     image = cv2.imread(str(path), cv2.IMREAD_COLOR)
     if image is None:
@@ -65,7 +72,11 @@ def _save_jpg(path: Path, image: np.ndarray) -> None:
 
 def _faces_for(file_name: str) -> list[dict[str, str]]:
     with (REPORTS / "faces.csv").open(newline="") as handle:
-        rows = [row for row in csv.DictReader(handle) if row["file"] == file_name]
+        rows = [
+            row
+            for row in csv.DictReader(handle)
+            if row["file"] == file_name and _is_kept_photo(row["file"])
+        ]
     rows.sort(key=lambda row: float(row["confidence"]), reverse=True)
     return rows
 
@@ -111,12 +122,12 @@ def make_overlay(file_name: str, caption: str, out_name: str, thickness: int = 4
 
 def make_crop_row() -> None:
     picks = [
-        ("20260509_102946.570.jpg", 0),
-        ("20260509_104151.150.jpg", 0),
-        ("20260425_083120.350.jpg", 0),
-        ("20100904_163717.960-3.jpg", 0),
+        ("20100904_163717.960-3.jpg", 4),
+        ("20100904_163717.960-3.jpg", 10),
+        ("20100911_164552.260.jpg", 4),
         ("20110903_172733.840.jpg", 0),
         ("20100918_120908.480-2.jpg", 0),
+        ("20090912_123727.000-4.jpg", 14),
     ]
     tiles: list[np.ndarray] = []
     tile = 220
@@ -143,15 +154,16 @@ def make_crop_row() -> None:
 
 
 def make_parsing() -> None:
-    file_name = "20260509_102946.570.jpg"
-    row = _faces_for(file_name)[0]
+    file_name = "20100904_163717.960-3.jpg"
+    face_index = 4
+    row = next(r for r in _faces_for(file_name) if int(r["face_index"]) == face_index)
     image = _load_bgr(TEST / file_name)
     x1, y1, x2, y2 = (int(round(float(row[k]))) for k in ("x1", "y1", "x2", "y2"))
     bw = int(0.2 * (x2 - x1))
     bh = int(0.2 * (y2 - y1))
     h, w = image.shape[:2]
     crop = image[max(0, y1 - bh) : min(h, y2 + bh), max(0, x1 - bw) : min(w, x2 + bw)]
-    mask_path = REPORTS / "masks" / "20260509_102946.570_face_000.png"
+    mask_path = REPORTS / "masks" / f"{Path(file_name).stem}_face_{face_index:03d}.png"
     mask = cv2.imread(str(mask_path), cv2.IMREAD_UNCHANGED)
     if mask is None:
         raise FileNotFoundError(mask_path)
@@ -170,9 +182,32 @@ def make_parsing() -> None:
     _save_jpg(OUT / "face_parsing.jpg", framed)
 
 
-def copy_detector_chart() -> None:
-    src = _load_bgr(REPORTS / "detector_comparison.png")
-    _save_jpg(OUT / "detector_comparison.jpg", _resize_max_w(src, 800))
+def make_detector_chart() -> None:
+    with (REPORTS / "photos.csv").open(newline="") as handle:
+        photos = [row for row in csv.DictReader(handle) if _is_kept_photo(row["file"])]
+    fig, ax = plt.subplots(figsize=(12, 8))
+    y = np.arange(len(photos))
+    series = [
+        (-0.24, "scrfd_640", "SCRFD 640", "#4d7fa6"),
+        (0.0, "scrfd_1280", "SCRFD 1280", "#0b956c"),
+        (0.24, "dlib_faces", "dlib HOG", "#d89531"),
+    ]
+    for offset, key, label, color in series:
+        ax.barh(y + offset, [int(p[key]) for p in photos], height=0.23, label=label, color=color)
+    ax.set_yticks(y, [p["file"] for p in photos])
+    ax.invert_yaxis()
+    ax.set_xlabel("Face detections (not unique people)")
+    ax.set_title("Face finder counts on remaining test photos", loc="left")
+    ax.legend(loc="lower right")
+    ax.grid(axis="x", alpha=0.2)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    tmp = OUT / "_chart.png"
+    fig.savefig(tmp, dpi=140)
+    plt.close(fig)
+    chart = _load_bgr(tmp)
+    tmp.unlink()
+    _save_jpg(OUT / "detector_comparison.jpg", _resize_max_w(chart, 800))
 
 
 def main() -> None:
@@ -184,10 +219,10 @@ def main() -> None:
         thickness=3,
     )
     make_overlay(
-        "20260509_102946.570.jpg",
-        "Close photo: one clear face is easy to find",
-        "find_faces_portrait.jpg",
-        thickness=8,
+        "20100904_163717.960-3.jpg",
+        "Small group: faces are larger and easier to find",
+        "find_faces_group.jpg",
+        thickness=4,
     )
     make_overlay(
         "20100918_120908.480-2.jpg",
@@ -203,7 +238,10 @@ def main() -> None:
     )
     make_crop_row()
     make_parsing()
-    copy_detector_chart()
+    make_detector_chart()
+    old_portrait = OUT / "find_faces_portrait.jpg"
+    if old_portrait.exists():
+        old_portrait.unlink()
     print(f"wrote {OUT}")
 
 

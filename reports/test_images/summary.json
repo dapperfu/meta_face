@@ -1,34 +1,32 @@
 {
-  "generated_at": "2026-09-02T20:54:11.664264+00:00",
-  "image_count": 24,
-  "total_bytes": 85377848,
+  "generated_at": "2026-09-03T01:40:56.740401+00:00",
+  "image_count": 15,
+  "total_bytes": 24075649,
   "tool_face_or_person_counts": {
-    "scrfd_640": 326,
-    "scrfd": 378,
-    "detectron2": 229,
-    "dlib_detect": 255,
-    "opencv_fer": 378,
-    "fer_plus": 378,
-    "yakhyo_gaze": 378,
-    "bisenet": 378,
-    "face_antispoof_onnx": 378,
-    "mediapipe_blendshapes": 295
+    "scrfd_640": 308,
+    "scrfd": 350,
+    "detectron2": 189,
+    "dlib_detect": 244,
+    "opencv_fer": 350,
+    "fer_plus": 350,
+    "yakhyo_gaze": 350,
+    "bisenet": 350,
+    "face_antispoof_onnx": 350,
+    "mediapipe_blendshapes": 274
   },
   "categories": {
     "Team / trophy": 7,
     "Rugby action": 5,
     "Rugby gathering": 2,
-    "Indoor candid": 1,
-    "Soccer setting": 9
+    "Indoor candid": 1
   },
   "cameras": {
     "Canon PowerShot A540": 3,
     "Canon EOS DIGITAL REBEL XT": 3,
-    "Canon EOS DIGITAL REBEL XSi": 9,
-    "NIKON Z50_2": 9
+    "Canon EOS DIGITAL REBEL XSi": 9
   },
-  "small_faces_under_40px": 141,
-  "expression_agreement_count": 250,
+  "small_faces_under_40px": 140,
+  "expression_agreement_count": 229,
   "exact_duplicate_pairs": 0,
   "similar_frame_pairs": [
     {
@@ -54,29 +52,21 @@
       "filename_interval_seconds": 2.0,
       "reason": "close capture sequence",
       "exact_duplicate": false
-    },
-    {
-      "first": "20260510_090743.860.jpg",
-      "second": "20260510_090743.930.jpg",
-      "dhash_distance": 10,
-      "filename_interval_seconds": 0.07,
-      "reason": "close capture sequence",
-      "exact_duplicate": false
     }
   ],
   "versions": {
-    "numpy": "2.4.6",
+    "numpy": "1.26.4",
     "pillow": "12.2.0",
     "onnxruntime": "1.26.0",
     "insightface": "1.0.1",
-    "dlib": "20.0.1",
-    "detectron2": "0.6",
-    "torch": "2.12.0",
+    "dlib": "20.0.0",
+    "detectron2": null,
+    "torch": "2.1.0+cu121",
     "mediapipe": "0.10.35",
-    "py-feat": "0.6.1",
-    "emotiefflib": "1.1.1",
+    "py-feat": null,
+    "emotiefflib": null,
     "sidecar-rs": "0.2.1"
   },
   "source_hashes_verified": true,
-  "sidecars_written": 24
+  "sidecars_written": 15
 }

@@ -21,7 +21,7 @@ The installed InsightFace 1.0.1 supports automatic multiscale detection upstream
 
 ## Evidence from existing metadata
 
-I read 100 evenly spaced entries from the sorted 1,545 unique photo paths in the existing ArcFace index metadata. I inspected sidecars and image headers, not a newly inferred collection. The reproducible observations and paths are in [the sample artifact](research/face_tool_coverage_sample.json).
+I read 100 evenly spaced entries from the sorted 1,545 unique photo paths in the existing ArcFace index metadata. I inspected sidecars and image headers, not a newly inferred collection. The original path list was removed from the repository.
 
 | Observation | Result |
 |---|---:|

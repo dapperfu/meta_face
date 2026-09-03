@@ -26,9 +26,9 @@ The business purpose is inferred as making personal and sports photo collections
 
 **Evidence of real use**
 
-The existing [ArcFace index metadFAISSata](/home/jed/.meta_face/faces.arcface.faiss.meta) contains 5,059 face references for 1,545 distinct images under `/tun/springSoccer2026`. Its corresponding FAISS file exists.
+The existing ArcFace index metadata contains 5,059 face references for 1,545 distinct images. Its corresponding FAISS file exists.
 
-The documented sample [photo sidecar](/tun/springSoccer2026/2026/05-May/20260502_101833.140.scar) contains seven SCRFD detections with seven 512-dimensional ArcFace embeddings, and one dlib detection with one 128-dimensional embedding. Detection records are dated June 5, 2026. Its June 6 cluster record reports 373 clusters over 5,059 faces. These are algorithmic clusters, not a validated count of actual people.
+A documented sample sidecar contained seven SCRFD detections with seven 512-dimensional ArcFace embeddings, and one dlib detection with one 128-dimensional embedding. A cluster record reported 373 clusters over 5,059 faces. These are algorithmic clusters, not a validated count of actual people.
 
 Saved annotation notebook output also shows a historical inference run. These artifacts establish that parts of the pipeline were used successfully. They do not establish current GPU readiness, accuracy, or completion of `/tun/steph_pictures` or the full sports collection. No full collection census was performed.
 

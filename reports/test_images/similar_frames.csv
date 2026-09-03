@@ -2,4 +2,3 @@ first,second,dhash_distance,filename_interval_seconds,reason,exact_duplicate
 20081115_145931.000.jpg,20081115_145939.000.jpg,10,8.0,close capture sequence,False
 20081115_145931.000.jpg,20081115_145941.000.jpg,9,10.0,close capture sequence,False
 20081115_145939.000.jpg,20081115_145941.000.jpg,5,2.0,close capture sequence,False
-20260510_090743.860.jpg,20260510_090743.930.jpg,10,0.07,close capture sequence,False

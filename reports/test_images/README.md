@@ -1,27 +1,27 @@
 # Sports photo analysis
 
-Completed analysis of all **24 JPEGs** in `test_images/`. Original file hashes were verified unchanged. Results include 24 sidecars, per-photo observations, detector comparisons, facial geometry, expression estimates, gaze estimates, segmentation masks, and image-quality measurements.
+Completed analysis of all **15 JPEGs** in `test_images/`. Original file hashes were verified unchanged. Results include sidecars, per-photo observations, detector comparisons, facial geometry, expression estimates, gaze estimates, segmentation masks, and image-quality measurements.
 
 ## Main findings
 
-- **378 face instances** detected with SCRFD at 1280, versus **326** at 640: 52 additional detections (+16.0%). All 326 baseline detections have a one-to-one spatial match at intersection-over-union (IoU) ≥0.30. These are detections across photos, not unique people or audited ground truth.
-- **255 dlib HOG detections**; 251 overlap SCRFD and four do not at IoU ≥0.30. Disagreement is a review signal, not a correctness score.
-- **141/378 faces (37.3%)** are under 40 native pixels on their shorter side. Median face width is approximately 43 pixels. Resizing these crops cannot restore missing detail.
-- **295 faces** yielded spatially checked MediaPipe meshes and 52 blendshapes; 83 attempts yielded no result or a mesh outside the expected face box.
-- Detectron2's default COCO checkpoint produced **229 person detections**. Those boxes cover bodies and must not be interpreted as face counts; crowd occlusion also reduces person detection.
-- The two expression models agree on **250/378 labels (66.1%)**. Treat these as uncertain visual-expression estimates; neither agreement nor a high model score establishes a person's feelings.
+- **350 face instances** detected with SCRFD at 1280, versus **308** at 640: 42 additional detections (+13.6%). These are detections across photos, not unique people or audited ground truth.
+- **244 dlib HOG detections**. Disagreement is a review signal, not a correctness score.
+- **140/350 faces (40.0%)** are under 40 native pixels on their shorter side. Median face width is approximately 43 pixels. Resizing these crops cannot restore missing detail.
+- **274 faces** yielded spatially checked MediaPipe meshes and 52 blendshapes; 76 attempts yielded no result or a mesh outside the expected face box.
+- Detectron2's default COCO checkpoint produced **189 person detections**. Those boxes cover bodies and must not be interpreted as face counts; crowd occlusion also reduces person detection.
+- The two expression models agree on **229/350 labels**. Treat these as uncertain visual-expression estimates; neither agreement nor a high model score establishes a person's feelings.
 
 ![Face detector comparison](detector_comparison.png)
 
 ## Collection and photographic review
 
-The collection contains seven team/trophy frames, five rugby action frames, two rugby gatherings, one indoor candid, and nine photographs in a soccer setting. Files span 2008–2011 and 2026. Total source size is 85.38 MB, with image sizes from 1.71 to 20.67 megapixels.
+The collection contains team/trophy frames, rugby action frames, rugby gatherings, and one indoor candid. Files span 2008–2011. Total source size is 24.08 MB.
 
-EXIF camera models: Canon PowerShot A540 (3), Canon EOS DIGITAL REBEL XT (3), Canon EOS DIGITAL REBEL XSi (9), and Nikon Z50_2 (9). Capture metadata, dimensions, file sizes, and quality measurements are in [photos.csv](photos.csv).
+Capture metadata, dimensions, file sizes, and quality measurements are in [photos.csv](photos.csv).
 
-Strong selection candidates from the visual review are the compact trophy portrait `20100904_163717.960-3.jpg`, the organized team portrait `20110903_172733.840.jpg`, the running rugby action in `20100918_120908.480-2.jpg`, the close portrait `20260509_102946.570.jpg`, and the goalkeeper action in `20260509_104151.150.jpg`. These are editorial suggestions, not automatic keep/reject decisions.
+Strong selection candidates from the visual review are the compact trophy portrait `20100904_163717.960-3.jpg`, the organized team portrait `20110903_172733.840.jpg`, and the running rugby action in `20100918_120908.480-2.jpg`. These are editorial suggestions, not automatic keep/reject decisions.
 
-The indoor candid `20100911_164552.260.jpg` has visible motion blur and a recorded 1/15 s exposure. It is the clearest case where moving subjects limit facial detail. The wide soccer frames are useful for field context, while their small faces make fine analysis harder. The side-profile goalkeeper frame tests orientation; high overall resolution does not make a profile frontal.
+The indoor candid `20100911_164552.260.jpg` has visible motion blur and a recorded 1/15 s exposure. It is the clearest case where moving subjects limit facial detail.
 
 The largest near-white pixel fractions are in `20090912_134812.000-2.jpg` (17.60%), `20110903_172929.140.jpg` (14.74%), and `20090912_123727.000-4.jpg` (10.12%). Sky and pale objects contribute to these values; this is not a measured percentage of overexposed faces.
 
@@ -48,15 +48,6 @@ Open **overlay** for SCRFD boxes and five landmarks; amber boxes flag faces unde
 | 13 | 20110903_102551.440.jpg | 13 | 14 | 8 | 16 | 6 | [overlay](overlays/20110903_102551.440.jpg) · [crops](face_sheets/20110903_102551.440.jpg) |
 | 14 | 20110903_172733.840.jpg | 17 | 17 | 17 | 17 | 0 | [overlay](overlays/20110903_172733.840.jpg) · [crops](face_sheets/20110903_172733.840.jpg) |
 | 15 | 20110903_172929.140.jpg | 14 | 15 | 12 | 14 | 0 | [overlay](overlays/20110903_172929.140.jpg) · [crops](face_sheets/20110903_172929.140.jpg) |
-| 16 | 20260425_081137.190.jpg | 3 | 3 | 2 | 8 | 0 | [overlay](overlays/20260425_081137.190.jpg) · [crops](face_sheets/20260425_081137.190.jpg) |
-| 17 | 20260425_083120.350.jpg | 1 | 1 | 0 | 1 | 0 | [overlay](overlays/20260425_083120.350.jpg) · [crops](face_sheets/20260425_083120.350.jpg) |
-| 18 | 20260502_101610.330.jpg | 2 | 2 | 2 | 2 | 0 | [overlay](overlays/20260502_101610.330.jpg) · [crops](face_sheets/20260502_101610.330.jpg) |
-| 19 | 20260502_164040.730.jpg | 6 | 6 | 0 | 6 | 0 | [overlay](overlays/20260502_164040.730.jpg) · [crops](face_sheets/20260502_164040.730.jpg) |
-| 20 | 20260509_102946.570.jpg | 1 | 1 | 1 | 2 | 0 | [overlay](overlays/20260509_102946.570.jpg) · [crops](face_sheets/20260509_102946.570.jpg) |
-| 21 | 20260509_104151.150.jpg | 1 | 1 | 1 | 2 | 0 | [overlay](overlays/20260509_104151.150.jpg) · [crops](face_sheets/20260509_104151.150.jpg) |
-| 22 | 20260510_090743.860.jpg | 2 | 6 | 2 | 7 | 1 | [overlay](overlays/20260510_090743.860.jpg) · [crops](face_sheets/20260510_090743.860.jpg) |
-| 23 | 20260510_090743.930.jpg | 1 | 7 | 3 | 7 | 0 | [overlay](overlays/20260510_090743.930.jpg) · [crops](face_sheets/20260510_090743.930.jpg) |
-| 24 | 20260510_091002.470.jpg | 1 | 1 | 0 | 5 | 0 | [overlay](overlays/20260510_091002.470.jpg) · [crops](face_sheets/20260510_091002.470.jpg) |
 
 ### Visual notes
 
@@ -75,15 +66,6 @@ Open **overlay** for SCRFD boxes and five landmarks; amber boxes flag faces unde
 - **13 — 20110903_102551.440.jpg**: Close rugby action with a back-facing foreground player. Strong action frame; partial faces, overlap and the background crowd need separate review.
 - **14 — 20110903_172733.840.jpg**: Organized two-row team portrait. Clearer faces and an orderly arrangement make this a strong group selection candidate and an easier detector comparison.
 - **15 — 20110903_172929.140.jpg**: Trophy celebration with raised arms and a foreground player. Good storytelling; several face directions and overlaps complicate geometry.
-- **16 — 20260425_081137.190.jpg**: Soccer sideline/action frame with three foreground faces. One player is cut by the right edge; blurred distant players add context rather than usable face detail.
-- **17 — 20260425_083120.350.jpg**: Side-profile goalkeeper portrait in bright light. Good profile test; face orientation matters more than the high image resolution.
-- **18 — 20260502_101610.330.jpg**: Goalkeeper standing with a distant spectator behind. Main face has useful detail; any second face should be reviewed as background.
-- **19 — 20260502_164040.730.jpg**: Players running toward the ball/camera. Main subject is clear, while faces near the edges and in the background are smaller.
-- **20 — 20260509_102946.570.jpg**: Close smiling portrait in a soccer setting. Largest, clearest face study in the set and a strong portrait selection candidate.
-- **21 — 20260509_104151.150.jpg**: Goalkeeper action with the main subject isolated against soft background. Strong expression/action selection candidate; foreground obstruction at the right edge.
-- **22 — 20260510_090743.860.jpg**: Wide match frame with extensive pitch and small distant faces. Use for field context; fine facial measurements need caution. Near-sequence with the next frame.
-- **23 — 20260510_090743.930.jpg**: Second wide match frame, 70 ms later according to the filenames. Similar framing with changed running poses and ball position; compare action timing before selecting.
-- **24 — 20260510_091002.470.jpg**: Ball in the air with several players facing away. Useful spatial/action story; visible bodies greatly outnumber frontal faces.
 
 ## Similar frames
 
@@ -94,7 +76,6 @@ No byte-identical files were found. Candidate sequences are listed below. Time i
 | 20081115_145931.000.jpg | 20081115_145939.000.jpg | 8.000 s | 10 |
 | 20081115_145931.000.jpg | 20081115_145941.000.jpg | 10.000 s | 9 |
 | 20081115_145939.000.jpg | 20081115_145941.000.jpg | 2.000 s | 5 |
-| 20260510_090743.860.jpg | 20260510_090743.930.jpg | 0.070 s | 10 |
 
 ## Model coverage and interpretation
 
@@ -108,7 +89,7 @@ No byte-identical files were found. Candidate sequences are listed below. Time i
 | FER+ | 378 records | Eight expression classes on grayscale crops; logits and softmax scores retained. |
 | Yakhyo gaze | 378 records | Separate 90-bin yaw/pitch outputs decoded to degrees; model estimates, not verified eye direction. |
 | BiSeNet | 378 records | 19-class face parsing decoded by argmax; one indexed PNG mask per face. |
-| MediaPipe | 295 records | 478-point mesh, 52 blendshape coefficients, transformation matrix; missing attempts are explicit. |
+| MediaPipe | 274 records | 478-point mesh, 52 blendshape coefficients, transformation matrix; missing attempts are explicit. |
 | MiniFASNetV2 diagnostic | 378 records | Three class probabilities only. A still-photo pass cannot establish liveness or image authenticity. |
 
 DeepFace, UniFace, LibreFace, OpenFace 3, L2CS, EmoNet, InspireFace and the separate face-anti-spoofing package are not installed. EmotiEffLib 1.1.1 is installed but the repository adapter imports a module that this version does not expose. Py-Feat 0.6.1 fails to import (`scipy.stats.binom_test` is absent; NumPy ABI warnings also occur). These tools have no inferred results in this report. No packages were installed or downgraded.
@@ -117,7 +98,7 @@ The run covers photographic and visible facial analysis. Recognition embeddings,
 
 ## Adapter findings
 
-The run used local adapters in `scripts/analyze_sports_photos.py`. Production wrappers in `src/meta_face/tools/analysis/` and default HOG dlib detection now follow the same contracts (OpenCV FER labels/alignment, gaze heads, BiSeNet argmax, MiniFASNet preprocess, per-crop MediaPipe, CPU HOG without a CUDA CNN import). Re-run `mf scan` after pulling; stale sidecar versions are processed again.
+The run used local adapters in `scripts/analyze_sports_photos.py`; the application wrappers were not edited. These corrections affect reproduction through the normal CLI:
 
 1. **OpenCV FER:** the current wrapper's class order is incorrect for the cached seven-output model. This run uses the upstream order and five-point face alignment. [OpenCV reference](https://github.com/opencv/opencv_zoo/blob/main/models/facial_expression_recognition/facial_fer_model.py).
 2. **Gaze:** the model returns two 90-bin vectors. The wrapper reads two values from the first vector; this run uses a softmax-weighted expected angle for each output, in degrees. [Gaze reference](https://github.com/yakhyo/gaze-estimation/blob/main/onnx_inference.py).
@@ -134,14 +115,13 @@ Full-image quality measures use grayscale luminance: near-black ≤5, near-white
 
 Sidecars were refreshed using the current coordinate writer. Image positions use normalized fractions with schema/unit tags; raw JSON and face CSV coordinates are source pixels. Native sizes and angles retain their units. Segmentation masks have a separate 512×512 crop frame; class values are 0–18. Sidecar geometry was checked by converting it back to clipped source-pixel coordinates.
 
-All 24 source hashes, tool record counts, finite model outputs, and sidecar geometry were verified. All 378 source crops completed each of the five ONNX analysis passes; MediaPipe no-result cases are stored explicitly. Annotated previews and crop sheets were visually inspected for representative crowd, profile, indoor, portrait and wide-action cases.
+All 15 source hashes, tool record counts, finite model outputs, and sidecar geometry were verified. All 350 source crops completed each of the five ONNX analysis passes; MediaPipe no-result cases are stored explicitly. Annotated previews and crop sheets were visually inspected for representative crowd, indoor, team and action cases.
 
 - [Full structured results](results.json) and [summary](summary.json)
 - [Per-photo metrics and observations](photos.csv)
 - [Per-face geometry, quality, gaze and expression comparison](faces.csv)
 - [Detector overlap details](detector_comparison.csv)
 - [Similar-frame candidates](similar_frames.csv)
-- [Contact sheet 1](contact_sheet_1.jpg) and [contact sheet 2](contact_sheet_2.jpg)
 
 Reproduce from the repository root using the existing environment:
 

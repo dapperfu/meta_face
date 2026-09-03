@@ -36,15 +36,6 @@ NOTES = [
     ("Rugby action", "Close rugby action with a back-facing foreground player. Strong action frame; partial faces, overlap and the background crowd need separate review."),
     ("Team / trophy", "Organized two-row team portrait. Clearer faces and an orderly arrangement make this a strong group selection candidate and an easier detector comparison."),
     ("Team / trophy", "Trophy celebration with raised arms and a foreground player. Good storytelling; several face directions and overlaps complicate geometry."),
-    ("Soccer setting", "Soccer sideline/action frame with three foreground faces. One player is cut by the right edge; blurred distant players add context rather than usable face detail."),
-    ("Soccer setting", "Side-profile goalkeeper portrait in bright light. Good profile test; face orientation matters more than the high image resolution."),
-    ("Soccer setting", "Goalkeeper standing with a distant spectator behind. Main face has useful detail; any second face should be reviewed as background."),
-    ("Soccer setting", "Players running toward the ball/camera. Main subject is clear, while faces near the edges and in the background are smaller."),
-    ("Soccer setting", "Close smiling portrait in a soccer setting. Largest, clearest face study in the set and a strong portrait selection candidate."),
-    ("Soccer setting", "Goalkeeper action with the main subject isolated against soft background. Strong expression/action selection candidate; foreground obstruction at the right edge."),
-    ("Soccer setting", "Wide match frame with extensive pitch and small distant faces. Use for field context; fine facial measurements need caution. Near-sequence with the next frame."),
-    ("Soccer setting", "Second wide match frame, 70 ms later according to the filenames. Similar framing with changed running poses and ball position; compare action timing before selecting."),
-    ("Soccer setting", "Ball in the air with several players facing away. Useful spatial/action story; visible bodies greatly outnumber frontal faces."),
 ]
 
 
@@ -119,41 +110,40 @@ def overlays(row):
 def markdown_report(summary, photos, face_rows, comparisons, near):
     count=summary["tool_face_or_person_counts"]
     small=summary["small_faces_under_40px"]
+    n=len(photos)
+    extra = count['scrfd'] - count['scrfd_640']
+    extra_pct = (extra / count['scrfd_640'] * 100) if count['scrfd_640'] else 0
+    agree = summary.get("expression_agreement_count", 0)
     lines=["# Sports photo analysis", "",
-           "Completed analysis of all **24 JPEGs** in `test_images/`. Original file hashes were verified unchanged. "
-           "Results include 24 sidecars, per-photo observations, detector comparisons, facial geometry, "
+           f"Completed analysis of all **{n} JPEGs** in `test_images/`. Original file hashes were verified unchanged. "
+           "Results include sidecars, per-photo observations, detector comparisons, facial geometry, "
            "expression estimates, gaze estimates, segmentation masks, and image-quality measurements.", "",
            "## Main findings", "",
            f"- **{count['scrfd']} face instances** detected with SCRFD at 1280, versus **{count['scrfd_640']}** "
-           "at 640: 52 additional detections (+16.0%). All 326 baseline detections have a one-to-one spatial match "
-           "at intersection-over-union (IoU) ≥0.30. These are detections across photos, not unique people or audited ground truth.",
-           f"- **{count['dlib_detect']} dlib HOG detections**; 251 overlap SCRFD and four do not at IoU ≥0.30. "
+           f"at 640: {extra} additional detections (+{extra_pct:.1f}%). These are detections across photos, "
+           "not unique people or audited ground truth.",
+           f"- **{count['dlib_detect']} dlib HOG detections**. "
            "Disagreement is a review signal, not a correctness score.",
            f"- **{small}/{count['scrfd']} faces ({small/count['scrfd']:.1%})** are under 40 native pixels on their shorter side. "
            "Median face width is approximately 43 pixels. Resizing these crops cannot restore missing detail.",
            f"- **{count.get('mediapipe_blendshapes',0)} faces** yielded spatially checked MediaPipe meshes and 52 blendshapes; "
            f"{count['scrfd']-count.get('mediapipe_blendshapes',0)} attempts yielded no result or a mesh outside the expected face box.",
-           "- Detectron2's default COCO checkpoint produced **229 person detections**. Those boxes cover bodies and "
+           f"- Detectron2's default COCO checkpoint produced **{count['detectron2']} person detections**. Those boxes cover bodies and "
            "must not be interpreted as face counts; crowd occlusion also reduces person detection.",
-           "- The two expression models agree on **250/378 labels (66.1%)**. Treat these as uncertain visual-expression "
+           f"- The two expression models agree on **{agree}/{count['scrfd']} labels**. Treat these as uncertain visual-expression "
            "estimates; neither agreement nor a high model score establishes a person's feelings.", "",
            "![Face detector comparison](detector_comparison.png)", "",
            "## Collection and photographic review", "",
-           "The collection contains seven team/trophy frames, five rugby action frames, two rugby gatherings, "
-           "one indoor candid, and nine photographs in a soccer setting. Files span 2008–2011 and 2026. "
-           f"Total source size is {summary['total_bytes']/1e6:.2f} MB, with image sizes from 1.71 to 20.67 megapixels.", "",
-           "EXIF camera models: Canon PowerShot A540 (3), Canon EOS DIGITAL REBEL XT (3), "
-           "Canon EOS DIGITAL REBEL XSi (9), and Nikon Z50_2 (9). Capture metadata, dimensions, "
-           "file sizes, and quality measurements are in [photos.csv](photos.csv).", "",
+           "The collection contains team/trophy frames, rugby action frames, rugby gatherings, "
+           "and one indoor candid. Files span 2008–2011. "
+           f"Total source size is {summary['total_bytes']/1e6:.2f} MB.", "",
+           "Capture metadata, dimensions, file sizes, and quality measurements are in [photos.csv](photos.csv).", "",
            "Strong selection candidates from the visual review are the compact trophy portrait "
            "`20100904_163717.960-3.jpg`, the organized team portrait `20110903_172733.840.jpg`, "
-           "the running rugby action in `20100918_120908.480-2.jpg`, the close portrait "
-           "`20260509_102946.570.jpg`, and the goalkeeper action in `20260509_104151.150.jpg`. "
+           "and the running rugby action in `20100918_120908.480-2.jpg`. "
            "These are editorial suggestions, not automatic keep/reject decisions.", "",
            "The indoor candid `20100911_164552.260.jpg` has visible motion blur and a recorded 1/15 s exposure. "
-           "It is the clearest case where moving subjects limit facial detail. The wide soccer frames are "
-           "useful for field context, while their small faces make fine analysis harder. The side-profile "
-           "goalkeeper frame tests orientation; high overall resolution does not make a profile frontal.", "",
+           "It is the clearest case where moving subjects limit facial detail.", "",
            "The largest near-white pixel fractions are in `20090912_134812.000-2.jpg` (17.60%), "
            "`20110903_172929.140.jpg` (14.74%), and `20090912_123727.000-4.jpg` (10.12%). "
            "Sky and pale objects contribute to these values; this is not a measured percentage of overexposed faces.", "",
@@ -238,16 +228,15 @@ def markdown_report(summary, photos, face_rows, comparisons, near):
                   "with schema/unit tags; raw JSON and face CSV coordinates are source pixels. Native sizes and angles "
                   "retain their units. Segmentation masks have a separate 512×512 crop frame; class values are 0–18. "
                   "Sidecar geometry was checked by converting it back to clipped source-pixel coordinates.", "",
-                  "All 24 source hashes, tool record counts, finite model outputs, and sidecar geometry were verified. "
-                  "All 378 source crops completed each of the five ONNX analysis passes; MediaPipe no-result cases are "
+                  f"All {n} source hashes, tool record counts, finite model outputs, and sidecar geometry were verified. "
+                  f"All {count['scrfd']} source crops completed each of the five ONNX analysis passes; MediaPipe no-result cases are "
                   "stored explicitly. Annotated previews and crop sheets were visually inspected for representative "
-                  "crowd, profile, indoor, portrait and wide-action cases.", "",
+                  "crowd, indoor, team and action cases.", "",
                   "- [Full structured results](results.json) and [summary](summary.json)",
                   "- [Per-photo metrics and observations](photos.csv)",
                   "- [Per-face geometry, quality, gaze and expression comparison](faces.csv)",
                   "- [Detector overlap details](detector_comparison.csv)",
-                  "- [Similar-frame candidates](similar_frames.csv)",
-                  "- [Contact sheet 1](contact_sheet_1.jpg) and [contact sheet 2](contact_sheet_2.jpg)", "",
+                  "- [Similar-frame candidates](similar_frames.csv)", "",
                   "Reproduce from the repository root using the existing environment:", "", "```bash",
                   "venv_meta_face/bin/python scripts/analyze_sports_photos.py --phase detect",
                   "venv_meta_face/bin/python scripts/analyze_sports_photos.py --phase analysis",
@@ -261,7 +250,7 @@ def markdown_report(summary, photos, face_rows, comparisons, near):
 
 def main():
     rows=[json.loads(p.read_text()) for p in sorted((OUT/"detections").glob("*.json"))]
-    assert len(rows)==24, f"Expected 24 photo results, got {len(rows)}"
+    assert len(rows)==len(NOTES), f"Expected {len(NOTES)} photo results, got {len(rows)}"
     photos, face_rows, comparisons, all_tools = [], [], [], Counter()
     for n, (row, (category, note)) in enumerate(zip(rows,NOTES),1):
         path=ROOT/"test_images"/row["file"]

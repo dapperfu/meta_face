@@ -37,7 +37,7 @@ Annotation notebooks load `face.scrfd.faces` from the sibling `.scar` sidecar by
 Default test image (7 faces):
 
 ```python
-IMAGE_PATH = Path("/tun/springSoccer2026/2026/05-May/20260502_101833.140.jpg")
+IMAGE_PATH = Path("test_images/20110903_172733.840.jpg")
 ```
 
 ### Meta analysis (`20`–`29`)

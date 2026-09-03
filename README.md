@@ -25,9 +25,9 @@ The pictures below come from the `test_images/` folder in this project.
 
 The green box is a face the tool found. An orange box is also a face, but it is very small in the photo.
 
-**Close photo.** One face. Easy.
+**Small group.** Faces are larger and easier to find.
 
-![Close photo with one face box](docs/readme_examples/find_faces_portrait.jpg)
+![Small group photo with face boxes](docs/readme_examples/find_faces_group.jpg)
 
 **Team photo.** Many faces in rows.
 
@@ -65,9 +65,9 @@ This project runs more than one finder. They do not always agree. That is useful
 
 In this test set:
 
-- The main face finder (SCRFD at a larger size) found **378** faces across **24** photos.
-- Another face finder (dlib) found **255** faces.
-- A person finder (Detectron2) found **229** whole bodies. A body is not the same as a face. A person can turn away.
+- The main face finder (SCRFD at a larger size) found **350** faces across **15** photos.
+- Another face finder (dlib) found **244** faces.
+- A person finder (Detectron2) found **189** whole bodies. A body is not the same as a face. A person can turn away.
 
 Rebuild these pictures from `test_images/` with:
 
@@ -198,9 +198,9 @@ More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordina
 
 绿框是找到的脸。橙框也是脸，但在照片里非常小。
 
-**近景。** 一张脸。比较容易。
+**小组合影。** 脸更大，更容易找。
 
-![近景照片上的人脸框](docs/readme_examples/find_faces_portrait.jpg)
+![小组合影上的人脸框](docs/readme_examples/find_faces_group.jpg)
 
 **合影。** 很多脸排成几排。
 
@@ -238,9 +238,9 @@ More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordina
 
 在这组测试照片里：
 
-- 主要的人脸查找（更大尺寸的 SCRFD）在 **24** 张照片里找到 **378** 张脸。
-- 另一种人脸查找（dlib）找到 **255** 张脸。
-- 人体查找（Detectron2）找到 **229** 个整个人。人体不等于人脸。人可以背对镜头。
+- 主要的人脸查找（更大尺寸的 SCRFD）在 **15** 张照片里找到 **350** 张脸。
+- 另一种人脸查找（dlib）找到 **244** 张脸。
+- 人体查找（Detectron2）找到 **189** 个整个人。人体不等于人脸。人可以背对镜头。
 
 用下面的命令，可以从 `test_images/` 重新生成这些图：
 
