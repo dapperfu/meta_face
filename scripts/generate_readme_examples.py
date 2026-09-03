@@ -186,13 +186,16 @@ def make_solo() -> None:
     mid = cv2.resize(blend, (size, size), interpolation=cv2.INTER_AREA)
     expr = str(_sidecar_face(SOLO_FILE, "opencv_fer").get("emotion_label", "?"))
     race = str(_sidecar_face(SOLO_FILE, "fairface").get("race_label", "?"))
+    live = _sidecar_face(SOLO_FILE, "face_antispoof_onnx")
+    live_score = float(live.get("liveness_score", 0.0))
     panel = np.full((size, 340, 3), 24, dtype=np.uint8)
     lines = [
-        "Extra guesses on this face",
+        "Full analysis on this face",
         f"Expression: {expr}",
         f"Gaze yaw: {float(gaze['yaw']):.1f} deg",
         f"Gaze pitch: {float(gaze['pitch']):.1f} deg",
         f"FairFace: {race}",
+        f"Liveness score: {live_score:.2f}",
         "(guesses, not facts)",
     ]
     y = 36
@@ -202,7 +205,10 @@ def make_solo() -> None:
         y += 42 if i == 0 else 36
     gap = np.full((size, 10, 3), 24, dtype=np.uint8)
     row = np.hstack([left, gap, mid, gap, panel])
-    extras = _caption_bar(row, "Same solo face: photo, skin/hair map, Yakhyo gaze + FairFace")
+    extras = _caption_bar(
+        row,
+        "2012 solo: photo, BiSeNet map, Yakhyo gaze, FairFace, expression, liveness",
+    )
     _save_jpg(OUT / "face_extras_solo.jpg", extras)
     _save_jpg(OUT / "face_parsing.jpg", _caption_bar(np.hstack([left, gap, mid]), "Same face: photo (left) and skin/hair/eye map (right)"))
 
