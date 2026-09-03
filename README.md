@@ -1,129 +1,341 @@
 # meta-face
 
-**meta-face** walks a directory of photos, runs face detection and embedding models, and writes results into `.scar` sidecar files beside each image. Use Redis workers for large batches, or `--run-now` for a single-machine run.
+**meta-face** looks at a folder of photos. It finds faces. It writes what it found next to each photo.
 
-## What it does
+You do not need to rename files. You do not need to change the photos. The extra notes go in a small sidecar file named `.scar`.
 
-- Detects faces with InsightFace, dlib/`face_recognition`, and Detectron2 by default
-- Computes face embeddings (512-d ArcFace or 128-d dlib)
-- Clusters identities across a collection with HDBSCAN
-- Writes all metadata to sibling `.scar` files via [sidecar-rs](https://github.com/dapperfu/sidecar-rs)
-- Skips images already processed unless you pass `--force`
+If `photo.jpg` is the picture, the notes are in `photo.scar`.
 
-## Requirements
+---
 
-- Python 3.10+
-- NVIDIA GPU with CUDA (`onnxruntime-gpu`, `faiss-gpu-cu12`)
-- Rust toolchain (builds `sidecar-rs` from git)
-- Docker (Redis and RQ dashboard only; workers run on the host)
+## What this project is for
 
-## Quick start
+A sports or family folder can have hundreds of pictures. Some pictures have one face. Some have a whole team.
+
+This tool tries to answer simple questions:
+
+1. Where are the faces?
+2. How many faces are in this picture?
+3. Which faces look like the same person in other pictures?
+4. What extra guesses can we make (smile, head turn, skin vs hair)?
+
+The pictures below come from the `test_images/` folder in this project.
+
+### 1. Find faces
+
+The green box is a face the tool found. An orange box is also a face, but it is very small in the photo.
+
+**Close photo.** One face. Easy.
+
+![Close photo with one face box](docs/readme_examples/find_faces_portrait.jpg)
+
+**Team photo.** Many faces in rows.
+
+![Team photo with many face boxes](docs/readme_examples/find_faces_team.jpg)
+
+**Action photo.** People run. Heads turn. Some faces are hard to see.
+
+![Action photo with face boxes](docs/readme_examples/find_faces_action.jpg)
+
+**Crowd photo.** Many tiny faces. The tool still tries to mark each one.
+
+![Crowd photo with many small face boxes](docs/readme_examples/find_faces_crowd.jpg)
+
+### 2. Cut out each face
+
+After it finds a face, it can cut that face out. Other tools then look at the small cut-out, not the whole photo.
+
+The word under each face is an **expression guess**. A guess can be wrong. Sunglasses, side views, and blur make guesses harder.
+
+![Six face cut-outs with expression labels](docs/readme_examples/face_crops.jpg)
+
+### 3. Map parts of a face
+
+Some tools do not only say “this is a face.” They color the pixels: skin, hair, eyes, mouth.
+
+Left: the photo. Right: the color map on the same face.
+
+![Face photo next to a skin hair eye color map](docs/readme_examples/face_parsing.jpg)
+
+### 4. Different tools count differently
+
+This project runs more than one finder. They do not always agree. That is useful. It shows which photos are easy and which photos need a human look.
+
+![Bar chart of face and person counts per photo](docs/readme_examples/detector_comparison.jpg)
+
+In this test set:
+
+- The main face finder (SCRFD at a larger size) found **378** faces across **24** photos.
+- Another face finder (dlib) found **255** faces.
+- A person finder (Detectron2) found **229** whole bodies. A body is not the same as a face. A person can turn away.
+
+Rebuild these pictures from `test_images/` with:
 
 ```bash
-docker compose up -d          # Redis on :26379, RQ dashboard on :29181
-
-pip install -e ".[detectron2]"   # torch + torchvision only
-# Build detectron2 against the same CUDA as PyTorch (CUDA_HOME must match):
-CUDA_HOME=/usr/local/cuda-13.0 pip install --no-build-isolation \
-  'git+https://github.com/facebookresearch/detectron2.git'
-
-mf download                 # caches Detectron2 model-zoo weights (default: COCO RetinaNet R50)
-
-mf worker                   # terminal 1
-mf scan /path/to/photos     # terminal 2 (detect and embed by default)
+python scripts/generate_readme_examples.py
 ```
 
-Run without the queue:
+---
+
+## Tools it uses
+
+Think of the project as a **toolbox**. One program (`mf`) can call many models. Each model has one job.
+
+### Find faces and people
+
+| Tool | Job in plain words |
+|------|--------------------|
+| [InsightFace](https://github.com/deepinsight/insightface) / **SCRFD** | Find faces and a few key points (eyes, nose, mouth). This is the main face finder. |
+| [dlib](http://dlib.net/) / [face_recognition](https://github.com/ageitgey/face_recognition) | A second face finder. It can catch faces the first finder misses, and the other way around. |
+| [Detectron2](https://github.com/facebookresearch/detectron2) | Find whole people (bodies), not faces. Helpful in group sports photos. |
+
+### Turn a face into a fingerprint
+
+| Tool | Job in plain words |
+|------|--------------------|
+| **ArcFace** (also from InsightFace) | Turn a face into 512 numbers. Similar people get similar numbers. |
+| **dlib embedding** | The same idea, with 128 numbers. A second fingerprint. |
+| [FAISS](https://github.com/facebookresearch/faiss) + [HDBSCAN](https://github.com/scikit-learn-contrib/hdbscan) | Group fingerprints so “same looking person” photos sit together. This is grouping, not a legal ID. |
+
+### Extra guesses on each face
+
+These tools usually look at the cut-out face after SCRFD finds it. Some big kits (DeepFace, UniFace, Py-Feat) can also find faces on their own.
+
+| Tool | Job in plain words |
+|------|--------------------|
+| OpenCV FER, FER+, EmotiEffLib, EmoNet | Guess expression (smile, surprise, …). |
+| [MediaPipe](https://developers.google.com/mediapipe) Face Landmarker | Many face points, plus blendshapes (how open is the mouth, …). |
+| Yakhyo gaze, L2CS-Net | Guess where the eyes look. |
+| FairFace | Guess age group, gender, and race. These are model guesses, not facts. |
+| BiSeNet | Color map of hair, skin, eyes, mouth. |
+| MiniFASNet and other anti-spoof tools | Guess “live face vs print/screen.” A still photo cannot prove a live person. |
+| LibreFace, OpenFace 3, Py-Feat | Face muscle / behavior scores. |
+| DeepFace, UniFace, InspireFace | Larger kits: find faces, fingerprints, and more analysis in one package. |
+
+### Save the notes
+
+| Tool | Job in plain words |
+|------|--------------------|
+| [sidecar-rs](https://github.com/dapperfu/sidecar-rs) | Write and update `.scar` files next to each photo. Another project ([meta_pose](../meta_pose)) can write pose notes into the same file. |
+
+You can list what is installed on your machine:
+
+```bash
+mf tools
+mf backends
+```
+
+---
+
+## How to run it
+
+You need:
+
+- Python 3.10 or newer
+- A NVIDIA GPU with CUDA (the default install uses GPU packages)
+- Rust (to build sidecar-rs)
+- Docker only if you want Redis workers for a large folder
+
+Install and scan a folder:
+
+```bash
+docker compose up -d
+pip install -e ".[detectron2]"
+mf download
+mf worker                 # terminal 1
+mf scan /path/to/photos   # terminal 2
+```
+
+Or run on this machine with no queue:
 
 ```bash
 mf scan /path/to/photos --run-now
 ```
 
-## Commands
+Useful commands:
 
-| Command | Purpose |
-|---------|---------|
-| `mf scan PATH` | Discover images and run/enqueue face processing |
-| `mf cluster PATH` | Cluster embeddings for a directory |
-| `mf annotate PATH` | Draw face overlays to sibling `*_scrfd.*` images |
-| `mf info PATH` | Show face data from a sidecar (`--json` for raw output) |
-| `mf backends` | List detection backends and availability |
-| `mf tools` | List all face tools and optional-dep availability |
-| `mf sdk list/run` | Discover and invoke DeepFace, UniFace and Py-Feat public APIs |
-| `mf normalize-coordinates PATH` | Preview/migrate geometry to clamped `[0, 1]` fractions (`--write` applies) |
-| `mf download` | Download model weights (`--backend dlib`, `detectron2`, `analysis`, or `all`) |
-| `mf failed` | Show tracebacks for failed RQ jobs |
+| Command | What it does |
+|---------|----------------|
+| `mf scan PATH` | Find photos and run the chosen tools |
+| `mf cluster PATH` | Group similar face fingerprints |
+| `mf annotate PATH` | Draw boxes onto a copy of the photo |
+| `mf info PATH` | Print what is in the `.scar` file |
+| `mf download` | Download model files |
 
-**Tool aliases:** `insightface` (scrfd + arcface), `face_recognition` (dlib_detect + dlib_embed), `hdbscan` (cluster), `hdbscan_dlib` (cluster_dlib).
-
-**Analysis meta-tools** (most require SCRFD crops; DeepFace, UniFace and Py-Feat detect independently): `expression`, `emotion`, `gaze`, `au`, `blendshapes`, `attributes`, `parsing`, `liveness`, `face_analysis`, `all_analysis`. Install optional deps first, e.g. `pip install -e ".[expression]"`. List availability with `mf tools`.
-
-Default `mf scan` runs insightface, face_recognition, and detectron2 (no clustering). Cluster explicitly with `mf cluster PATH` or add `hdbscan` to `--tools`:
+Default `mf scan` runs InsightFace, face_recognition, and Detectron2. It does not group people until you cluster:
 
 ```bash
 mf scan /photos --tools insightface,face_recognition,detectron2,hdbscan
-mf scan /photos --tools face_recognition,hdbscan_dlib   # dlib embeddings
-mf scan /photos --tools scrfd,expression --run-now      # emotion + blendshapes
-mf download --backend analysis                          # ONNX/MediaPipe weights
+mf scan /photos --tools scrfd,expression --run-now
 ```
 
-## Output
+More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordinates](docs/COORDINATES.md).
 
-For `photo.jpg`, results land in `photo.scar` in the same directory. Keys are prefixed `face.<tool>.` (detections, embeddings, cluster labels). Inspect with `mf info photo.jpg`.
+---
 
-The same `.scar` can also hold `pose.*` keys from [meta_pose](../meta_pose). Writes use `SidecarDocument.update_path` (sidecar-rs ≥ 0.2.1) with a per-file lock so `mf` and `mp` workers can run concurrently without dropping each other's data.
+## 中文说明
 
-Supported images: JPEG, PNG, WebP, BMP, TIFF, HEIC/HEIF.
+**meta-face** 会查看一个照片文件夹。它找出人脸。它把结果写在每张照片旁边。
 
-## Notebooks
+它不会改你的照片文件名。它也不会改照片本身。额外信息写在一个叫 `.scar` 的小文件里。
 
-Interactive examples live in [`notebooks/`](notebooks/). Each notebook covers one focused task; numbering uses sequential prefixes (`01`–`09` annotation, `20`–`29` meta analysis).
+如果照片是 `photo.jpg`，结果就在 `photo.scar`。
 
-**Annotation** (`01`–`09`) — GPU inference:
+### 这个项目做什么
 
-| Notebook | Purpose |
-|----------|---------|
-| `01_annotate_overview.ipynb` | Original vs annotated side-by-side |
-| `02_face_crops_buffered.ipynb` | Per-face crops with configurable bbox buffer % |
-| `03_face_attributes.ipynb` | Print all extracted face fields (age, gender, pose, landmarks) |
-| `04_face_metadata_crops.ipynb` | Buffered face crops with full metadata panel per face |
+一个运动或家庭相册里，可能有几百张照片。有的只有一张脸。有的是整支球队。
+
+这个工具想回答这些简单问题：
+
+1. 脸在哪里？
+2. 这张照片里有几张脸？
+3. 哪些脸看起来像同一个人？
+4. 还能猜什么（微笑、转头、皮肤和头发）？
+
+下面的图都来自本项目的 `test_images/` 文件夹。
+
+### 1. 找人脸
+
+绿框是找到的脸。橙框也是脸，但在照片里非常小。
+
+**近景。** 一张脸。比较容易。
+
+![近景照片上的人脸框](docs/readme_examples/find_faces_portrait.jpg)
+
+**合影。** 很多脸排成几排。
+
+![合影上的许多人脸框](docs/readme_examples/find_faces_team.jpg)
+
+**运动照片。** 人在跑。头会转。有的脸不好看清。
+
+![运动照片上的人脸框](docs/readme_examples/find_faces_action.jpg)
+
+**大合影。** 很多很小的脸。工具仍会尽量给每张脸做标记。
+
+![拥挤合影上的许多人脸框](docs/readme_examples/find_faces_crowd.jpg)
+
+### 2. 切出每张脸
+
+找到脸以后，可以切出这张脸。后面的工具看这个小图，而不是整张大图。
+
+每张脸下面的词是**表情猜测**。猜测可能错。墨镜、侧脸、模糊都会让猜测更难。
+
+![六张切出的人脸和表情标签](docs/readme_examples/face_crops.jpg)
+
+### 3. 标出脸上的部位
+
+有的工具不只说“这是一张脸”。它们会给像素上色：皮肤、头发、眼睛、嘴。
+
+左边：原图。右边：同一张脸上的彩色图。
+
+![人脸原图和皮肤头发眼睛分区图](docs/readme_examples/face_parsing.jpg)
+
+### 4. 不同工具数出来的数量不一样
+
+这个项目会用不止一种查找方式。它们不一定完全一样。这很有用。它能告诉你哪些照片简单，哪些照片需要人来看。
+
+![每张照片的人脸和人数对比图](docs/readme_examples/detector_comparison.jpg)
+
+在这组测试照片里：
+
+- 主要的人脸查找（更大尺寸的 SCRFD）在 **24** 张照片里找到 **378** 张脸。
+- 另一种人脸查找（dlib）找到 **255** 张脸。
+- 人体查找（Detectron2）找到 **229** 个整个人。人体不等于人脸。人可以背对镜头。
+
+用下面的命令，可以从 `test_images/` 重新生成这些图：
 
 ```bash
-pip install -e .
+python scripts/generate_readme_examples.py
+```
+
+### 它用了哪些工具
+
+可以把这个项目看成一个**工具箱**。一个程序（`mf`）可以调用很多模型。每个模型做一件事。
+
+**找人脸和人**
+
+| 工具 | 用白话说 |
+|------|----------|
+| InsightFace / **SCRFD** | 找人脸，以及几个关键点（眼睛、鼻子、嘴）。这是主要的人脸查找。 |
+| dlib / face_recognition | 第二种人脸查找。第一种漏掉的，它有时能找到。反过来也一样。 |
+| Detectron2 | 找整个人（身体），不是脸。在团体运动照片里有用。 |
+
+**把脸变成“指纹”**
+
+| 工具 | 用白话说 |
+|------|----------|
+| **ArcFace**（也来自 InsightFace） | 把一张脸变成 512 个数字。长得像的人，数字也更像。 |
+| **dlib embedding** | 同样的想法，但是 128 个数字。第二种指纹。 |
+| FAISS + HDBSCAN | 把指纹分组，让“看起来像同一个人”的照片靠在一起。这是分组，不是法律意义上的身份证明。 |
+
+**对每张脸再猜一些信息**
+
+这些工具通常先看 SCRFD 切出的小脸图。有些大工具包（DeepFace、UniFace、Py-Feat）也可以自己找脸。
+
+| 工具 | 用白话说 |
+|------|----------|
+| OpenCV FER、FER+、EmotiEffLib、EmoNet | 猜表情（笑、惊讶等）。 |
+| MediaPipe Face Landmarker | 很多脸部点，还有 blendshapes（嘴张多大等）。 |
+| Yakhyo gaze、L2CS-Net | 猜眼睛在看哪里。 |
+| FairFace | 猜年龄段、性别、种族。这是模型猜测，不是事实。 |
+| BiSeNet | 给头发、皮肤、眼睛、嘴上色。 |
+| MiniFASNet 和其他防假脸工具 | 猜“真人还是照片/屏幕”。单张静态照片不能证明是真人。 |
+| LibreFace、OpenFace 3、Py-Feat | 脸部肌肉 / 行为分数。 |
+| DeepFace、UniFace、InspireFace | 更大的工具包：找脸、指纹，以及更多分析。 |
+
+**保存结果**
+
+| 工具 | 用白话说 |
+|------|----------|
+| sidecar-rs | 在每张照片旁边写入和更新 `.scar` 文件。另一个项目（meta_pose）可以把姿势信息写进同一个文件。 |
+
+查看你这台电脑上装了哪些工具：
+
+```bash
+mf tools
+mf backends
+```
+
+### 怎么运行
+
+你需要：
+
+- Python 3.10 或更新
+- 带 CUDA 的 NVIDIA 显卡（默认安装使用 GPU 软件包）
+- Rust（用来编译 sidecar-rs）
+- 只有在处理很大的文件夹、需要 Redis 工人时，才需要 Docker
+
+安装并扫描文件夹：
+
+```bash
+docker compose up -d
+pip install -e ".[detectron2]"
 mf download
-make notebook
+mf worker                 # 第一个终端
+mf scan /path/to/photos   # 第二个终端
 ```
 
-**Meta analysis** (`20`–`29`) — parallel `.scar` reads, no GPU:
-
-| Notebook | Purpose |
-|----------|---------|
-| `20_collection_overview.ipynb` | High-level coverage and avg faces per photo |
-| `21_faces_per_photo.ipynb` | Face count distributions |
-| `22_year_breakdown.ipynb` | Per-year stats for `20XX` folders |
-| `23_coverage_gaps.ipynb` | Missing sidecars / tool data |
-| `24_cluster_identity.ipynb` | Cluster identity statistics |
+或者在这台机器上直接跑，不用队列：
 
 ```bash
-pip install -e .
-make notebook-analysis
+mf scan /path/to/photos --run-now
 ```
 
-For contributors, add test/lint tools with `pip install -e ".[dev]"`. Optional analysis tool deps: `[emotion]`, `[expression]`, `[gaze]`, `[attributes]`, `[liveness]`, or `[all-tools]`.
+常用命令：
 
-Set `ROOT` in meta-analysis notebooks (default `/tun/steph_pictures`). See [`notebooks/README.md`](notebooks/README.md).
+| 命令 | 做什么 |
+|------|--------|
+| `mf scan PATH` | 找照片，并运行你选的工具 |
+| `mf cluster PATH` | 把相似的人脸指纹分组 |
+| `mf annotate PATH` | 在照片副本上画框 |
+| `mf info PATH` | 打印 `.scar` 文件里的内容 |
+| `mf download` | 下载模型文件 |
 
-## Configuration
+默认的 `mf scan` 会运行 InsightFace、face_recognition 和 Detectron2。它不会自动把人分组。分组需要再运行 cluster：
 
-DeepFace, UniFace and Py-Feat detect independently and expose their full public SDK APIs. Install with `pip install -e '.[sdk-tools]'`. See [SDK tools and recipes](docs/SDK_TOOLS.md).
+```bash
+mf scan /photos --tools insightface,face_recognition,detectron2,hdbscan
+mf scan /photos --tools scrfd,expression --run-now
+```
 
-New sidecars store image boxes and landmarks as normalized width/height fractions in `[0, 1]`, clamping out-of-frame predictions. Readers resolve them for the current image size; legacy formats remain supported. See [coordinate schema and migration](docs/COORDINATES.md).
-
-Environment variables (`META_FACE_REDIS_HOST`, `META_FACE_MODEL`, `META_FACE_DATA`, etc.) are defined in [`src/meta_face/config.py`](src/meta_face/config.py).
-
-## Limitations
-
-- Requires GPU packages at install time (`onnxruntime-gpu`, `faiss-gpu-cu12`)
-- Requires sidecar-rs ≥ 0.2.1 (`SidecarDocument.update_path`) for safe concurrent `.scar` updates
-- File locking is fully supported on Unix; non-Unix platforms use best-effort writes
-- Clustering requires embeddings for the chosen `--embeddings` source in sidecars
+更多说明：[notebooks/](notebooks/)、[SDK 工具](docs/SDK_TOOLS.md)、[坐标](docs/COORDINATES.md)。
