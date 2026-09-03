@@ -1,4 +1,4 @@
-"""Face model weight management (insightface, dlib, and detectron2).
+"""Face model weight management (insightface and dlib).
 
 Downloading weights is a standalone step so model packs can be fetched
 explicitly (for example before starting GPU workers) instead of lazily on the
@@ -7,7 +7,6 @@ first inference call.
 
 from __future__ import annotations
 
-from importlib.resources import files as pkg_files
 from pathlib import Path
 
 from meta_face.config import (
@@ -16,18 +15,12 @@ from meta_face.config import (
     INSIGHTFACE_ROOT,
     insightface_model_dir,
 )
-from meta_face.detectron2_model import (
-    download_detectron2_weights,
-    is_detectron2_available,
-)
 
 __all__ = [
     "download",
     "download_all",
-    "download_detectron2_weights",
     "download_dlib_models",
     "is_available",
-    "is_detectron2_available",
     "is_dlib_available",
     "model_dir",
 ]
@@ -98,23 +91,9 @@ def download_dlib_models(*, force: bool = False) -> Path:
     return dest
 
 
-def bundled_detectron2_config() -> Path:
-    """Legacy WIDER FACE RetinaNet config (custom override only)."""
-    return Path(pkg_files("meta_face.data.detectron2") / "retinanet_wider_face.yaml")
-
-
 def download_all(*, insightface_model: str | None = None, force: bool = False) -> dict[str, Path]:
     """Download/verify all backend model weights."""
-    paths: dict[str, Path] = {
+    return {
         "insightface": download(insightface_model, force=force),
         "dlib": download_dlib_models(force=force),
     }
-    try:
-        import detectron2  # noqa: F401
-    except ImportError:
-        return paths
-    try:
-        paths["detectron2"] = download_detectron2_weights(force=force)
-    except RuntimeError:
-        pass
-    return paths

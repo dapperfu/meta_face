@@ -40,7 +40,6 @@ def normalize_tools(tools: list[str]) -> list[str]:
 BACKEND_JOB_GROUPS: tuple[tuple[str, frozenset[str]], ...] = (
     ("insightface", frozenset({"scrfd", "arcface"})),
     ("face_recognition", frozenset({"dlib_detect", "dlib_embed"})),
-    ("detectron2", frozenset({"detectron2"})),
     ("analysis", ANALYSIS_TOOLS),
 )
 
@@ -69,8 +68,6 @@ def resolve_per_image_tools(tools: list[str]) -> list[str]:
             result.append("dlib_detect")
         if "dlib_embed" in requested:
             result.append("dlib_embed")
-    if "detectron2" in requested:
-        result.append("detectron2")
     for tool in normalize_tools(tools):
         if tool in ANALYSIS_TOOLS and tool not in result:
             result.append(tool)

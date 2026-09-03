@@ -311,7 +311,6 @@ def detection_phase(paths, force):
     from insightface.model_zoo import get_model
     from insightface.app.common import Face
     from meta_face.tools.face_record import faces_to_sidecar_records
-    from meta_face.backends.detectron2_backend import Detectron2Backend
 
     models = {}
     for key, filename in [("det", "det_10g.onnx"), ("2d", "2d106det.onnx"),
@@ -320,15 +319,7 @@ def detection_phase(paths, force):
                                 providers=["CPUExecutionProvider"])
         if key != "det":
             models[key].prepare(ctx_id=-1)
-    try:
-        import torch
-        torch.set_num_threads(4)
-        d2 = Detectron2Backend()
-        d2._get_predictor()
-        d2_error = None
-    except Exception as exc:
-        d2, d2_error = None, f"{type(exc).__name__}: {exc}"
-    status = {"scrfd": "ready", "dlib_detect": "pending", "detectron2": d2_error or "ready",
+    status = {"scrfd": "ready", "dlib_detect": "pending",
               "device": "CPU", "onnx_providers": ort.get_available_providers()}
     save_json(OUT / "detection_runtime.json", status)
     for n, path in enumerate(paths, 1):
@@ -386,18 +377,6 @@ def detection_phase(paths, force):
             row["errors"]["dlib_detect"] = f"{type(exc).__name__}: {exc}"
             status["dlib_detect"] = row["errors"]["dlib_detect"]
         row["timings"]["dlib_detect"] = time.perf_counter() - t
-        t = time.perf_counter()
-        if d2:
-            try:
-                payload = d2.detectron2_to_sidecar_payload(image, d2.detect(image))
-                payload.update(entity_type="person", face_count_note="Legacy key counts whole people, not faces")
-                row["tools"]["detectron2"] = payload
-                persist(path, "detectron2", payload, (w, h))
-            except Exception as exc:
-                row["errors"]["detectron2"] = f"{type(exc).__name__}: {exc}"
-        else:
-            row["errors"]["detectron2"] = d2_error
-        row["timings"]["detectron2"] = time.perf_counter() - t
         row["timings"]["total"] = time.perf_counter() - start
         save_json(target, row)
         save_json(OUT / "detection_runtime.json", status)

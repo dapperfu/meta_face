@@ -9,7 +9,6 @@ from pathlib import Path
 TOOL_VERSIONS: dict[str, str] = {
     "scrfd": "2.0.0",
     "arcface": "1.1.0",
-    "detectron2": "2.0.0",
     "dlib_detect": "2.1.0",
     "dlib_embed": "1.2.0",
     "cluster": "1.1.0",
@@ -66,7 +65,7 @@ CROP_ANALYSIS_TOOLS = ANALYSIS_TOOLS - INDEPENDENT_ANALYSIS_TOOLS
 
 # Per-image tools vs collection-level aggregate tools.
 DETECTION_TOOLS: frozenset[str] = frozenset(
-    {"scrfd", "arcface", "detectron2", "dlib_detect", "dlib_embed"}
+    {"scrfd", "arcface", "dlib_detect", "dlib_embed"}
 )
 PER_IMAGE_TOOLS: frozenset[str] = DETECTION_TOOLS | ANALYSIS_TOOLS
 EMBEDDING_TOOLS: frozenset[str] = frozenset({"arcface", "dlib_embed"})
@@ -76,14 +75,12 @@ ALL_TOOLS: frozenset[str] = PER_IMAGE_TOOLS | AGGREGATE_TOOLS
 DEFAULT_SCAN_META_TOOLS: tuple[str, ...] = (
     "insightface",
     "face_recognition",
-    "detectron2",
 )
 DEFAULT_TOOLS: tuple[str, ...] = (
     "scrfd",
     "arcface",
     "dlib_detect",
     "dlib_embed",
-    "detectron2",
 )
 
 # insightface model pack (SCRFD + ArcFace).
@@ -100,46 +97,6 @@ DLIB_MODEL: str = os.environ.get("META_FACE_DLIB_MODEL", "hog")
 DLIB_ROOT: str = os.environ.get(
     "META_FACE_DLIB_ROOT",
     str(Path.home() / ".meta_face" / "dlib"),
-)
-
-# Detectron2 (optional extra; face RetinaNet on WIDER FACE).
-DETECTRON2_SCORE_THRESH: float = float(
-    os.environ.get("META_FACE_DETECTRON2_SCORE_THRESH", "0.5")
-)
-DETECTRON2_DEVICE: str = os.environ.get("META_FACE_DETECTRON2_DEVICE", "cuda:0")
-
-
-def resolve_detectron2_device() -> str:
-    """Return the torch device for Detectron2, falling back to CPU when CUDA is unavailable."""
-    requested = DETECTRON2_DEVICE.strip()
-    if requested == "cpu":
-        return "cpu"
-    if requested.startswith("cuda"):
-        try:
-            import torch
-
-            if not torch.cuda.is_available():
-                return "cpu"
-        except ImportError:
-            return "cpu"
-    return requested
-# Detectron2 model zoo config (config + weights resolved via model_zoo.get_*).
-DETECTRON2_MODEL_ZOO: str = os.environ.get(
-    "META_FACE_DETECTRON2_MODEL_ZOO",
-    "COCO-Detection/retinanet_R_50_FPN_3x.yaml",
-)
-
-
-def _parse_detectron2_class_filter(raw: str) -> frozenset[int] | None:
-    value = raw.strip()
-    if not value or value.lower() in {"all", "*"}:
-        return None
-    return frozenset(int(part.strip()) for part in value.split(",") if part.strip())
-
-
-# COCO class ids to keep (default: 0 = person). Set to "all" to keep every class.
-DETECTRON2_CLASS_FILTER: frozenset[int] | None = _parse_detectron2_class_filter(
-    os.environ.get("META_FACE_DETECTRON2_CLASSES", "0")
 )
 
 # Redis / RQ
@@ -224,28 +181,6 @@ def cluster_tool_for_embedding(embedding_tool: str) -> str:
     if embedding_tool == "dlib_embed":
         return "cluster_dlib"
     raise ValueError(f"Unknown embedding tool: {embedding_tool}")
-
-
-def detectron2_dir() -> Path:
-    """Directory for Detectron2 config and downloaded weights (created on write)."""
-    return DATA_DIR / "detectron2"
-
-
-def default_detectron2_config_path() -> Path:
-    return detectron2_dir() / "custom.yaml"
-
-
-def default_detectron2_weights_path() -> Path:
-    return detectron2_dir() / "model.pkl"
-
-
-# Optional overrides; when unset, detectron2 backend uses model_zoo config + checkpoint URL.
-DETECTRON2_CONFIG_PATH: Path = Path(
-    os.environ.get("META_FACE_DETECTRON2_CONFIG", str(default_detectron2_config_path()))
-)
-DETECTRON2_WEIGHTS_PATH: Path = Path(
-    os.environ.get("META_FACE_DETECTRON2_WEIGHTS", str(default_detectron2_weights_path()))
-)
 
 
 def normalize_embedding_tool(name: str) -> str:

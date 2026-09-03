@@ -37,7 +37,6 @@ def test_default_scan_runs_detection_without_clustering() -> None:
     assert DEFAULT_SCAN_META_TOOLS == (
         "insightface",
         "face_recognition",
-        "detectron2",
     )
     expanded = validate_tools(list(DEFAULT_SCAN_META_TOOLS))
     assert resolve_per_image_tools(expanded) == list(DEFAULT_TOOLS)
@@ -57,11 +56,9 @@ def test_resolve_backend_job_groups_splits_default_tools() -> None:
     assert [key for key, _ in groups] == [
         "insightface",
         "face_recognition",
-        "detectron2",
     ]
     assert groups[0][1] == ["scrfd", "arcface"]
     assert groups[1][1] == ["dlib_detect", "dlib_embed"]
-    assert groups[2][1] == ["detectron2"]
 
 
 def test_resolve_backend_job_groups_includes_analysis() -> None:
@@ -73,5 +70,5 @@ def test_resolve_backend_job_groups_includes_analysis() -> None:
 
 
 def test_resolve_backend_job_groups_single_backend() -> None:
-    groups = resolve_backend_job_groups(["detectron2"])
-    assert groups == [("detectron2", ["detectron2"])]
+    groups = resolve_backend_job_groups(["dlib_detect", "dlib_embed"])
+    assert groups == [("face_recognition", ["dlib_detect", "dlib_embed"])]

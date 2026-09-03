@@ -16,7 +16,6 @@ TOOL_ALIASES: dict[str, str] = {
 TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "insightface": ("scrfd", "arcface"),
     "face_recognition": ("dlib_detect", "dlib_embed"),
-    "detectron2": ("detectron2",),
     # Analysis meta-tools (crop-based; require scrfd).
     "expression": (
         "emotiefflib",
@@ -104,8 +103,6 @@ def expand_dependencies(tools: list[str]) -> list[str]:
             result.append("dlib_detect")
         if "dlib_embed" in names and "dlib_embed" not in result:
             result.append("dlib_embed")
-    if "detectron2" in names and "detectron2" not in result:
-        result.append("detectron2")
     for tool in names:
         if tool in ANALYSIS_TOOLS and tool not in result:
             result.append(tool)
@@ -120,8 +117,3 @@ def insightface_tools_requested(tools: list[str]) -> bool:
 def dlib_tools_requested(tools: list[str]) -> bool:
     names = set(validate_tools(tools))
     return bool(names & {"dlib_detect", "dlib_embed"})
-
-
-def detectron2_tools_requested(tools: list[str]) -> bool:
-    names = set(validate_tools(tools))
-    return "detectron2" in names

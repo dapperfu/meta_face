@@ -9,12 +9,10 @@ from typing import Any
 
 import cv2
 
-from meta_face.backends.registry import get_detection_backend
 from meta_face.config import ANALYSIS_TOOLS, CROP_ANALYSIS_TOOLS
 from meta_face.deps import (
     require_cluster_runtime,
     require_dlib_runtime,
-    require_detectron2_runtime,
     require_inference_runtime,
     require_insightface_runtime,
 )
@@ -49,7 +47,6 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
 
     insightface_faces = None
     dlib_rgb_faces: tuple[Any, list[Any]] | None = None
-    detectron2_detections: list[dict[str, Any]] | None = None
 
     pending_analysis = [t for t in pending if t in ANALYSIS_TOOLS]
     scrfd_in_sidecar = has_tool(doc, "scrfd")  # type: ignore[arg-type]
@@ -73,12 +70,6 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
         dlib_faces = dlib_detect_faces(rgb)
         dlib_rgb_faces = (rgb, dlib_faces)
         face_count = max(face_count, len(dlib_faces))
-
-    if "detectron2" in pending_set:
-        require_detectron2_runtime()
-        backend = get_detection_backend("detectron2")
-        detectron2_detections = backend.detect(image)
-        face_count = max(face_count, len(detectron2_detections))
 
     def _patch(doc: object) -> None:
         nonlocal face_count
@@ -127,15 +118,6 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
                     dlib_embed_to_sidecar_payload(rgb, dlib_faces),
                     image_size=image_size,
                 )  # type: ignore[arg-type]
-
-        if detectron2_detections is not None:
-            backend = get_detection_backend("detectron2")
-            write_tool_result(
-                doc,
-                "detectron2",
-                backend.detectron2_to_sidecar_payload(image, detectron2_detections),
-                image_size=image_size,
-            )  # type: ignore[arg-type]
 
         if pending_analysis:
             from meta_face.tools.analysis.runner import run_pending_analysis_tools

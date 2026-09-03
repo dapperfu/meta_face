@@ -12,31 +12,31 @@ from meta_face.deps import (
 )
 
 
-def test_adjust_per_image_tools_keeps_detectron2_when_available() -> None:
-    with patch("meta_face.deps.detectron2_runtime_issue", return_value=None):
+def test_adjust_per_image_tools_keeps_available_analysis() -> None:
+    with patch("meta_face.tools.analysis.registry.tool_availability", return_value=None):
         tools, warnings = adjust_per_image_tools_for_runtime(
-            ["scrfd", "detectron2"],
-            detectron2_explicit=False,
+            ["scrfd", "opencv_fer"],
+            analysis_explicit=set(),
         )
-    assert tools == ["scrfd", "detectron2"]
+    assert tools == ["scrfd", "opencv_fer"]
     assert warnings == []
 
 
-def test_adjust_per_image_tools_skips_detectron2_from_default() -> None:
-    with patch("meta_face.deps.detectron2_runtime_issue", return_value="missing weights"):
+def test_adjust_per_image_tools_skips_unavailable_analysis() -> None:
+    with patch("meta_face.tools.analysis.registry.tool_availability", return_value="missing weights"):
         tools, warnings = adjust_per_image_tools_for_runtime(
-            ["scrfd", "detectron2"],
-            detectron2_explicit=False,
+            ["scrfd", "opencv_fer"],
+            analysis_explicit=set(),
         )
     assert tools == ["scrfd"]
     assert len(warnings) == 1
-    assert "Skipping detectron2" in warnings[0]
+    assert "Skipping opencv_fer" in warnings[0]
 
 
-def test_adjust_per_image_tools_fails_when_detectron2_explicit() -> None:
-    with patch("meta_face.deps.detectron2_runtime_issue", return_value="missing package"):
+def test_adjust_per_image_tools_fails_when_analysis_explicit() -> None:
+    with patch("meta_face.tools.analysis.registry.tool_availability", return_value="missing package"):
         with pytest.raises(PipelineDependencyError, match="missing package"):
             adjust_per_image_tools_for_runtime(
-                ["detectron2"],
-                detectron2_explicit=True,
+                ["opencv_fer"],
+                analysis_explicit={"opencv_fer"},
             )

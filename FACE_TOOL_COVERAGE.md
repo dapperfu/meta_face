@@ -2,7 +2,7 @@
 
 Assessment date: 2026-09-02. This describes the inherited implementation, local stored results, upstream capabilities, and the changes made during this review. It complements [the project assessment](PROJECT_ASSESSMENT.md).
 
-**Finding:** the inherited project had two face-detection paths, two embedding paths and an object detector. Seventeen analysis adapters did not constitute seventeen independent face recognizers. DeepFace, UniFace and Py-Feat exposed only small, sometimes incompatible portions of their SDKs. Their public APIs and photo adapters have now been expanded; detection accuracy and collection-level identity quality remain unmeasured.
+**Finding:** the inherited project had two face-detection paths, two embedding paths and a COCO person detector. The person detector has been removed from meta_face (body detection belongs in meta_pose). Seventeen analysis adapters did not constitute seventeen independent face recognizers. DeepFace, UniFace and Py-Feat exposed only small, sometimes incompatible portions of their SDKs. Their public APIs and photo adapters have now been expanded; detection accuracy and collection-level identity quality remain unmeasured.
 
 ## Core tools
 
@@ -12,10 +12,9 @@ Assessment date: 2026-09-02. This describes the inherited implementation, local 
 | ArcFace / InsightFace | Normalized 512-dimensional embeddings from the same detected faces | Similarity representation, not a complete named-person identification system. Faces missed by SCRFD never receive this embedding. No quality gate, calibrated unknown-person threshold, reference gallery or review workflow. |
 | dlib detection / face_recognition | Default frontal HOG detector; configurable CNN alternative; default upstream upsampling of one | Default HOG uses dlib's CPU detector and 68-point predictor without importing face_recognition's CUDA CNN. CNN remains opt-in via `META_FACE_DLIB_MODEL=cnn`. Stored score `1.0` is a placeholder, not calibrated confidence. |
 | dlib embeddings | 128-dimensional descriptors, one jitter, subsequently L2-normalized | A second embedding space. Upstream raw-descriptor distance thresholds do not transfer unchanged after this normalization. The wrapper does not implement verification or database lookup. |
-| Detectron2 | Default COCO RetinaNet R50 FPN, class filter 0 (`person`) | Person detection. Its boxes and counts are stored under face keys even though the default model is not a face detector. No person-to-face association or head refinement is implemented. |
 | FAISS / HDBSCAN | Separate ArcFace/dlib collections; normalized vectors; inner-product index; HDBSCAN with minimum cluster size 2 | Clustering is not stable named identity management. The saved FAISS index is not searched by the inherited clustering path. No persistent person IDs, incremental assignment, review/merge workflow or calibrated rejection rule. Cluster membership probabilities are not identity-correctness probabilities. |
 
-Sources: [InsightFace package and model packs](https://github.com/deepinsight/insightface/tree/master/python-package), [SCRFD](https://github.com/deepinsight/insightface/tree/master/detection/scrfd), [ArcFace paper](https://arxiv.org/abs/1801.07698), [face_recognition API](https://face-recognition.readthedocs.io/en/latest/face_recognition.html), [dlib recognition example](https://dlib.net/dnn_face_recognition_ex.cpp.html), [Detectron2 model zoo](https://github.com/facebookresearch/detectron2/blob/main/MODEL_ZOO.md), [FAISS metrics](https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances), [HDBSCAN parameters](https://hdbscan.readthedocs.io/en/latest/parameter_selection.html).
+Sources: [InsightFace package and model packs](https://github.com/deepinsight/insightface/tree/master/python-package), [SCRFD](https://github.com/deepinsight/insightface/tree/master/detection/scrfd), [ArcFace paper](https://arxiv.org/abs/1801.07698), [face_recognition API](https://face-recognition.readthedocs.io/en/latest/face_recognition.html), [dlib recognition example](https://dlib.net/dnn_face_recognition_ex.cpp.html), [FAISS metrics](https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances), [HDBSCAN parameters](https://hdbscan.readthedocs.io/en/latest/parameter_selection.html).
 
 The installed InsightFace 1.0.1 supports automatic multiscale detection upstream, but this project explicitly selects 640×640. Changing a default is not proof of improved sports-photo recall: larger input sizes and tiled inference should be evaluated against labeled images. Model-pack and embedding provenance must also be separated before mixing results from different recognition models in one collection.
 
@@ -28,13 +27,13 @@ I read 100 evenly spaced entries from the sorted 1,545 unique photo paths in the
 | Photos sampled | 100 |
 | Stored SCRFD boxes | 328 |
 | Stored dlib boxes | 176 |
-| Stored Detectron2 boxes | 811 person boxes |
+| Stored Detectron2 boxes (legacy, now out of scope) | 811 person boxes |
 | Photos with more SCRFD than dlib boxes | 70 |
 | Photos with more dlib than SCRFD boxes | 16 |
 | Photos with equal counts | 14 |
 | Photos with any of the 17 optional analysis markers | 0 |
 
-All sampled configurations record `buffalo_l`, 640×640 detection, dlib HOG and the COCO person detector. The median detected SCRFD box width is about 88.9 original pixels, corresponding to about 10.2 pixels after scaling the image to a longest side of 640. Of the 328 stored detections, 270 project to widths below 16 pixels.
+All sampled configurations record `buffalo_l`, 640×640 detection and dlib HOG. Historical sidecars may still contain COCO person boxes written before that detector was removed. The median detected SCRFD box width is about 88.9 original pixels, corresponding to about 10.2 pixels after scaling the image to a longest side of 640. Of the 328 stored detections, 270 project to widths below 16 pixels.
 
 This is **not a recall/precision benchmark**: indexed photos are a biased sample, detected boxes are not ground truth, and more boxes may include false positives. The 16 photos where dlib has more detections suggest complementary cases worth reviewing; they do not prove 16 improved outcomes. The tiny projected boxes identify a concrete resolution question for evaluation.
 

@@ -16,7 +16,7 @@ flowchart LR
     analysis --> scar["face.<tool>.* in .scar"]
 ```
 
-- **Detection layer** (unchanged): `scrfd`, `arcface`, `dlib_*`, `detectron2`
+- **Detection layer** (unchanged): `scrfd`, `arcface`, `dlib_*`
 - **Analysis layer** (new): crop-based tools under `src/meta_face/tools/analysis/`
 - **Dependency rule**: any analysis tool auto-includes `scrfd` via `expand_dependencies`
 - **Optional deps**: `pyproject.toml` extras `[emotion]`, `[expression]`, `[gaze]`, `[attributes]`, `[liveness]`, `[all-tools]`

@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from meta_face.backends.base import FaceDetectionBackend
-from meta_face.backends.detectron2_backend import Detectron2Backend
 from meta_face.backends.insightface_backend import InsightFaceBackend
 
 _BACKENDS: dict[str, FaceDetectionBackend] = {
     "scrfd": InsightFaceBackend(),
-    "detectron2": Detectron2Backend(),
 }
 
 DETECTION_BACKEND_NAMES: frozenset[str] = frozenset(_BACKENDS.keys())

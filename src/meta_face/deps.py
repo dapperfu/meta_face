@@ -9,7 +9,6 @@ import subprocess
 from importlib.metadata import distribution
 
 from meta_face.tools.registry import (
-    detectron2_tools_requested,
     dlib_tools_requested,
     insightface_tools_requested,
 )
@@ -76,77 +75,15 @@ def require_dlib_runtime() -> None:
         ) from None
 
 
-def detectron2_install_message() -> str:
-    """Actionable steps to install the detectron2 Python package."""
-    return (
-        "detectron2 Python package is not installed.\n"
-        "Note: pip install -e \".[detectron2]\" only installs torch/torchvision.\n"
-        "Build detectron2 against the same CUDA as PyTorch:\n"
-        "  pip install -e \".[detectron2]\"\n"
-        "  CUDA_HOME=/usr/local/cuda-13.0 pip install --no-build-isolation \\\n"
-        "    'git+https://github.com/facebookresearch/detectron2.git'\n"
-        "Set CUDA_HOME to match torch.version.cuda "
-        "(python -c \"import torch; print(torch.version.cuda)\").\n"
-        "See https://github.com/facebookresearch/detectron2/blob/main/INSTALL.md"
-    )
-
-
-def detectron2_weights_message() -> str:
-    """Actionable steps when detectron2 weights/config are missing."""
-    from meta_face.config import DETECTRON2_MODEL_ZOO, DETECTRON2_WEIGHTS_PATH
-    from meta_face.detectron2_model import uses_custom_detectron2_paths
-
-    if uses_custom_detectron2_paths():
-        from meta_face.config import DETECTRON2_CONFIG_PATH, DETECTRON2_WEIGHTS_PATH
-
-        return (
-            "Detectron2 custom model files are missing.\n"
-            f"  config:  {DETECTRON2_CONFIG_PATH}\n"
-            f"  weights: {DETECTRON2_WEIGHTS_PATH}"
-        )
-    return (
-        "Detectron2 is not ready.\n"
-        "  mf download --backend detectron2\n"
-        f"Default model zoo: {DETECTRON2_MODEL_ZOO}"
-    )
-
-
-def detectron2_runtime_issue() -> str | None:
-    """Return an error message when detectron2 cannot run, else None."""
-    try:
-        import detectron2  # noqa: F401
-        import torch  # noqa: F401
-    except ImportError:
-        return detectron2_install_message()
-
-    from meta_face.detectron2_model import is_detectron2_available
-
-    if not is_detectron2_available():
-        return detectron2_weights_message()
-    return None
-
-
 def adjust_per_image_tools_for_runtime(
     per_image_tools: list[str],
     *,
-    detectron2_explicit: bool,
     analysis_explicit: set[str] | None = None,
 ) -> tuple[list[str], list[str]]:
     """Drop unavailable tools when not explicitly requested; warn otherwise."""
     warnings: list[str] = []
     result = list(per_image_tools)
     analysis_explicit = analysis_explicit or set()
-
-    if "detectron2" in result:
-        issue = detectron2_runtime_issue()
-        if issue is not None:
-            if detectron2_explicit:
-                raise PipelineDependencyError(issue)
-            warnings.append(
-                "Skipping detectron2 (not fully available):\n"
-                f"{issue}\nScan continues with the remaining tools."
-            )
-            result = [tool for tool in result if tool != "detectron2"]
 
     from meta_face.config import ANALYSIS_TOOLS
     from meta_face.tools.analysis.registry import tool_availability
@@ -165,13 +102,6 @@ def adjust_per_image_tools_for_runtime(
     return result, warnings
 
 
-def require_detectron2_runtime() -> None:
-    """Ensure detectron2, torch, and model weights are available."""
-    issue = detectron2_runtime_issue()
-    if issue is not None:
-        raise PipelineDependencyError(issue) from None
-
-
 def require_inference_runtime(tools: list[str] | None = None) -> None:
     """Ensure backends needed for the requested per-image tools are available."""
     if tools is None:
@@ -183,8 +113,6 @@ def require_inference_runtime(tools: list[str] | None = None) -> None:
         require_insightface_runtime()
     if dlib_tools_requested(tools):
         require_dlib_runtime()
-    if detectron2_tools_requested(tools):
-        require_detectron2_runtime()
     from meta_face.config import CROP_ANALYSIS_TOOLS
     from meta_face.tools.registry import validate_tools
 

@@ -16,7 +16,7 @@ class FaceDetectionBackend(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Registry / sidecar tool name (e.g. scrfd, detectron2)."""
+        """Registry / sidecar tool name (e.g. scrfd)."""
 
     @abstractmethod
     def available(self) -> bool:

@@ -73,11 +73,11 @@ def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
     show_default=True,
     help=(
         "Comma-separated tools: insightface (scrfd + arcface), "
-        "face_recognition (dlib_detect + dlib_embed), detectron2, "
+        "face_recognition (dlib_detect + dlib_embed), "
         "expression/emotion/gaze/au/blendshapes/attributes/parsing/liveness meta-tools, "
         "or individual tools (emotiefflib, opencv_fer, mediapipe_blendshapes, libreface, "
         "openface3, yakhyo_gaze, fairface, bisenet, uniface, deepface, ...). "
-        "Default runs insightface, face_recognition, and detectron2 (no clustering)."
+        "Default runs insightface and face_recognition (no clustering)."
     ),
 )
 @click.option(
@@ -93,9 +93,7 @@ def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
     show_default=True,
     help="Enqueue jobs for a worker, or run face scanning inline now.",
 )
-@click.pass_context
 def scan(
-    ctx: click.Context,
     path: Path,
     force: bool,
     tools: str,
@@ -108,16 +106,11 @@ def scan(
     per_image_tools = resolve_per_image_tools(tool_list)
     requested_raw = {t.strip().lower() for t in tools.split(",") if t.strip()}
     analysis_explicit = requested_raw & {
-        t for t in tool_list if t not in {"scrfd", "arcface", "dlib_detect", "dlib_embed", "detectron2"}
+        t for t in tool_list if t not in {"scrfd", "arcface", "dlib_detect", "dlib_embed"}
     }
-    detectron2_explicit = (
-        ctx.get_parameter_source("tools") == click.core.ParameterSource.COMMANDLINE
-        and "detectron2" in requested_raw
-    )
     try:
         per_image_tools, runtime_warnings = adjust_per_image_tools_for_runtime(
             per_image_tools,
-            detectron2_explicit=detectron2_explicit,
             analysis_explicit=analysis_explicit,
         )
     except PipelineDependencyError as exc:
@@ -346,7 +339,6 @@ def tools_cmd() -> None:
         [
             "insightface",
             "dlib",
-            "detectron2",
             "opencv_fer",
             "fer_plus",
             "mediapipe",
@@ -375,10 +367,8 @@ def download(backend: str, model: str, force: bool) -> None:
     from meta_face.models import download as download_insightface
     from meta_face.models import (
         download_all,
-        download_detectron2_weights,
         download_dlib_models,
         is_available,
-        is_detectron2_available,
         is_dlib_available,
     )
     from meta_face.models import model_dir
@@ -434,25 +424,6 @@ def download(backend: str, model: str, force: bool) -> None:
         click.echo("Verifying dlib / face_recognition models...")
         path = download_dlib_models(force=force)
         click.echo(f"dlib models ready at {path}")
-        return
-
-    if key == "detectron2":
-        from meta_face.config import DETECTRON2_MODEL_ZOO
-        from meta_face.detectron2_model import cached_model_zoo_weights_path, resolve_detectron2_model
-
-        if is_detectron2_available() and not force:
-            paths = resolve_detectron2_model()
-            click.echo("Detectron2 models ready:")
-            if paths.model_zoo:
-                click.echo(f"  model_zoo: {paths.model_zoo}")
-            click.echo(f"  config:  {paths.config}")
-            click.echo(f"  weights: {paths.weights}")
-            return
-        click.echo(f"Downloading Detectron2 model zoo weights ({DETECTRON2_MODEL_ZOO})...")
-        path = download_detectron2_weights(force=force)
-        click.echo(f"Detectron2 weights cached at {path}")
-        if path != cached_model_zoo_weights_path():
-            click.echo(f"  (model zoo cache: {cached_model_zoo_weights_path()})")
         return
 
     if is_available(model) and not force:

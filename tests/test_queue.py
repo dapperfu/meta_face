@@ -14,7 +14,7 @@ def test_enqueue_process_image_one_job_per_backend(tmp_path: Path) -> None:
     image_path.write_bytes(b"\xff\xd8\xff\xd9")
 
     mock_queue = MagicMock()
-    mock_jobs = [MagicMock(id=f"job-{i}") for i in range(3)]
+    mock_jobs = [MagicMock(id=f"job-{i}") for i in range(2)]
     mock_queue.enqueue.side_effect = mock_jobs
 
     with (
@@ -23,12 +23,11 @@ def test_enqueue_process_image_one_job_per_backend(tmp_path: Path) -> None:
     ):
         job_ids = enqueue_process_image(image_path, list(DEFAULT_TOOLS), force=False)
 
-    assert job_ids == ["job-0", "job-1", "job-2"]
-    assert mock_queue.enqueue.call_count == 3
+    assert job_ids == ["job-0", "job-1"]
+    assert mock_queue.enqueue.call_count == 2
     job_id_prefixes = [call.kwargs["job_id"] for call in mock_queue.enqueue.call_args_list]
     assert job_id_prefixes[0].startswith("image-insightface-")
     assert job_id_prefixes[1].startswith("image-face_recognition-")
-    assert job_id_prefixes[2].startswith("image-detectron2-")
 
 
 def test_enqueue_process_image_skips_satisfied_backends(tmp_path: Path) -> None:
@@ -36,10 +35,10 @@ def test_enqueue_process_image_skips_satisfied_backends(tmp_path: Path) -> None:
     image_path.write_bytes(b"\xff\xd8\xff\xd9")
 
     mock_queue = MagicMock()
-    mock_queue.enqueue.return_value = MagicMock(id="job-d2")
+    mock_queue.enqueue.return_value = MagicMock(id="job-dlib")
 
     def needs_processing(_path: Path, tools: list[str], force: bool) -> bool:
-        return "detectron2" in tools
+        return "dlib_detect" in tools
 
     with (
         patch("meta_face.queue.get_queue", return_value=mock_queue),
@@ -47,6 +46,6 @@ def test_enqueue_process_image_skips_satisfied_backends(tmp_path: Path) -> None:
     ):
         job_ids = enqueue_process_image(image_path, list(DEFAULT_TOOLS), force=False)
 
-    assert job_ids == ["job-d2"]
+    assert job_ids == ["job-dlib"]
     assert mock_queue.enqueue.call_count == 1
-    assert mock_queue.enqueue.call_args.args[2] == ["detectron2"]
+    assert mock_queue.enqueue.call_args.args[2] == ["dlib_detect", "dlib_embed"]

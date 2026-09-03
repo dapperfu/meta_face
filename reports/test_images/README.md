@@ -8,7 +8,6 @@ Completed analysis of all **15 JPEGs** in `test_images/`. Original file hashes w
 - **244 dlib HOG detections**. Disagreement is a review signal, not a correctness score.
 - **140/350 faces (40.0%)** are under 40 native pixels on their shorter side. Median face width is approximately 43 pixels. Resizing these crops cannot restore missing detail.
 - **274 faces** yielded spatially checked MediaPipe meshes and 52 blendshapes; 76 attempts yielded no result or a mesh outside the expected face box.
-- Detectron2's default COCO checkpoint produced **189 person detections**. Those boxes cover bodies and must not be interpreted as face counts; crowd occlusion also reduces person detection.
 - The two expression models agree on **229/350 labels**. Treat these as uncertain visual-expression estimates; neither agreement nor a high model score establishes a person's feelings.
 
 ![Face detector comparison](detector_comparison.png)
@@ -31,23 +30,23 @@ Global sharpness is intentionally **not used to rank photographs**. The clear cl
 
 Open **overlay** for SCRFD boxes and five landmarks; amber boxes flag faces under 40 pixels. Open **crops** for every detected face with its photo-local index, native size and detection score. Indices do not link identities across photos.
 
-| # | Photo | SCRFD 640 | SCRFD 1280 | dlib | People | Small faces | Review |
-|---:|---|---:|---:|---:|---:|---:|---|
-| 01 | 20081115_145931.000.jpg | 44 | 46 | 43 | 10 | 14 | [overlay](overlays/20081115_145931.000.jpg) · [crops](face_sheets/20081115_145931.000.jpg) |
-| 02 | 20081115_145939.000.jpg | 44 | 45 | 39 | 12 | 15 | [overlay](overlays/20081115_145939.000.jpg) · [crops](face_sheets/20081115_145939.000.jpg) |
-| 03 | 20081115_145941.000.jpg | 35 | 41 | 26 | 10 | 16 | [overlay](overlays/20081115_145941.000.jpg) · [crops](face_sheets/20081115_145941.000.jpg) |
-| 04 | 20090912_123727.000-4.jpg | 9 | 15 | 7 | 12 | 7 | [overlay](overlays/20090912_123727.000-4.jpg) · [crops](face_sheets/20090912_123727.000-4.jpg) |
-| 05 | 20090912_134812.000-2.jpg | 10 | 26 | 5 | 15 | 0 | [overlay](overlays/20090912_134812.000-2.jpg) · [crops](face_sheets/20090912_134812.000-2.jpg) |
-| 06 | 20090912_165430.000.jpg | 65 | 71 | 52 | 11 | 69 | [overlay](overlays/20090912_165430.000.jpg) · [crops](face_sheets/20090912_165430.000.jpg) |
-| 07 | 20100904_090203.670-2.jpg | 6 | 9 | 0 | 11 | 4 | [overlay](overlays/20100904_090203.670-2.jpg) · [crops](face_sheets/20100904_090203.670-2.jpg) |
-| 08 | 20100904_163717.960-3.jpg | 11 | 11 | 11 | 13 | 0 | [overlay](overlays/20100904_163717.960-3.jpg) · [crops](face_sheets/20100904_163717.960-3.jpg) |
-| 09 | 20100907_154123.070-4.jpg | 10 | 10 | 9 | 13 | 0 | [overlay](overlays/20100907_154123.070-4.jpg) · [crops](face_sheets/20100907_154123.070-4.jpg) |
-| 10 | 20100911_164552.260.jpg | 7 | 7 | 1 | 9 | 0 | [overlay](overlays/20100911_164552.260.jpg) · [crops](face_sheets/20100911_164552.260.jpg) |
-| 11 | 20100918_120908.480-2.jpg | 12 | 12 | 7 | 13 | 9 | [overlay](overlays/20100918_120908.480-2.jpg) · [crops](face_sheets/20100918_120908.480-2.jpg) |
-| 12 | 20100918_122112.850.jpg | 11 | 11 | 7 | 13 | 0 | [overlay](overlays/20100918_122112.850.jpg) · [crops](face_sheets/20100918_122112.850.jpg) |
-| 13 | 20110903_102551.440.jpg | 13 | 14 | 8 | 16 | 6 | [overlay](overlays/20110903_102551.440.jpg) · [crops](face_sheets/20110903_102551.440.jpg) |
-| 14 | 20110903_172733.840.jpg | 17 | 17 | 17 | 17 | 0 | [overlay](overlays/20110903_172733.840.jpg) · [crops](face_sheets/20110903_172733.840.jpg) |
-| 15 | 20110903_172929.140.jpg | 14 | 15 | 12 | 14 | 0 | [overlay](overlays/20110903_172929.140.jpg) · [crops](face_sheets/20110903_172929.140.jpg) |
+| # | Photo | SCRFD 640 | SCRFD 1280 | dlib | Small faces | Review |
+|---:|---|---:|---:|---:|---:|---|
+| 01 | 20081115_145931.000.jpg | 44 | 46 | 43 | 14 | [overlay](overlays/20081115_145931.000.jpg) · [crops](face_sheets/20081115_145931.000.jpg) |
+| 02 | 20081115_145939.000.jpg | 44 | 45 | 39 | 15 | [overlay](overlays/20081115_145939.000.jpg) · [crops](face_sheets/20081115_145939.000.jpg) |
+| 03 | 20081115_145941.000.jpg | 35 | 41 | 26 | 16 | [overlay](overlays/20081115_145941.000.jpg) · [crops](face_sheets/20081115_145941.000.jpg) |
+| 04 | 20090912_123727.000-4.jpg | 9 | 15 | 7 | 7 | [overlay](overlays/20090912_123727.000-4.jpg) · [crops](face_sheets/20090912_123727.000-4.jpg) |
+| 05 | 20090912_134812.000-2.jpg | 10 | 26 | 5 | 0 | [overlay](overlays/20090912_134812.000-2.jpg) · [crops](face_sheets/20090912_134812.000-2.jpg) |
+| 06 | 20090912_165430.000.jpg | 65 | 71 | 52 | 69 | [overlay](overlays/20090912_165430.000.jpg) · [crops](face_sheets/20090912_165430.000.jpg) |
+| 07 | 20100904_090203.670-2.jpg | 6 | 9 | 0 | 4 | [overlay](overlays/20100904_090203.670-2.jpg) · [crops](face_sheets/20100904_090203.670-2.jpg) |
+| 08 | 20100904_163717.960-3.jpg | 11 | 11 | 11 | 0 | [overlay](overlays/20100904_163717.960-3.jpg) · [crops](face_sheets/20100904_163717.960-3.jpg) |
+| 09 | 20100907_154123.070-4.jpg | 10 | 10 | 9 | 0 | [overlay](overlays/20100907_154123.070-4.jpg) · [crops](face_sheets/20100907_154123.070-4.jpg) |
+| 10 | 20100911_164552.260.jpg | 7 | 7 | 1 | 0 | [overlay](overlays/20100911_164552.260.jpg) · [crops](face_sheets/20100911_164552.260.jpg) |
+| 11 | 20100918_120908.480-2.jpg | 12 | 12 | 7 | 9 | [overlay](overlays/20100918_120908.480-2.jpg) · [crops](face_sheets/20100918_120908.480-2.jpg) |
+| 12 | 20100918_122112.850.jpg | 11 | 11 | 7 | 0 | [overlay](overlays/20100918_122112.850.jpg) · [crops](face_sheets/20100918_122112.850.jpg) |
+| 13 | 20110903_102551.440.jpg | 13 | 14 | 8 | 6 | [overlay](overlays/20110903_102551.440.jpg) · [crops](face_sheets/20110903_102551.440.jpg) |
+| 14 | 20110903_172733.840.jpg | 17 | 17 | 17 | 0 | [overlay](overlays/20110903_172733.840.jpg) · [crops](face_sheets/20110903_172733.840.jpg) |
+| 15 | 20110903_172929.140.jpg | 14 | 15 | 12 | 0 | [overlay](overlays/20110903_172929.140.jpg) · [crops](face_sheets/20110903_172929.140.jpg) |
 
 ### Visual notes
 
@@ -55,7 +54,7 @@ Open **overlay** for SCRFD boxes and five landmarks; amber boxes flag faces unde
 - **02 — 20081115_145939.000.jpg**: Second rugby group frame. Cohesive pose with small faces throughout; compare individual expressions and occlusion against the preceding frame before selecting.
 - **03 — 20081115_145941.000.jpg**: Group begins to break pose; more turned and occluded faces. Fewer detections here reflect a real change in face visibility as well as detector limits.
 - **04 — 20090912_123727.000-4.jpg**: Tackle/ball-carrier action with overlapping bodies, a back-facing foreground player, dust and distant spectators. Useful profile and occlusion case.
-- **05 — 20090912_134812.000-2.jpg**: Large gathering in matching shirts. Many people face away; small faces and backlighting challenge the default detector size. Faces and person counts measure different things.
+- **05 — 20090912_134812.000-2.jpg**: Large gathering in matching shirts. Many people face away; small faces and backlighting challenge the default detector size.
 - **06 — 20090912_165430.000.jpg**: Very large posed group. Strongest crowd stress case in this set; tiny faces dominate and upscaled crops reveal limited native detail.
 - **07 — 20100904_090203.670-2.jpg**: Sideline players, tents and ropes. Side views and obscured faces make this a hard detector-comparison case.
 - **08 — 20100904_163717.960-3.jpg**: Compact trophy portrait with larger faces. Good geometry test and a strong selection candidate; sunglasses and overlapping rows still need individual review.
@@ -84,7 +83,6 @@ No byte-identical files were found. Candidate sequences are listed below. Time i
 | SCRFD 640 | 326 records | Baseline face detector, confidence threshold 0.5. |
 | SCRFD 1280 + geometry | 378 records | Primary face detector; 5 keypoints, 106 2D landmarks, 68 projected 3D landmarks and head pose. |
 | dlib HOG | 255 records | Independent CPU face detector and 68 landmarks, native image with one upsample. |
-| Detectron2 COCO RetinaNet | 229 records | Person boxes; not comparable to face boxes as the same entity. |
 | OpenCV FER | 378 records | Seven expression classes, aligned crops, corrected class order; logits and softmax scores retained. |
 | FER+ | 378 records | Eight expression classes on grayscale crops; logits and softmax scores retained. |
 | Yakhyo gaze | 378 records | Separate 90-bin yaw/pitch outputs decoded to degrees; model estimates, not verified eye direction. |

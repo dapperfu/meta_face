@@ -75,7 +75,6 @@ In this test set:
 
 - The main face finder (SCRFD at a larger size) found **350** faces across **15** photos.
 - Another face finder (dlib) found **244** faces.
-- A person finder (Detectron2) found **189** whole bodies. A body is not the same as a face. A person can turn away.
 
 Rebuild these pictures from `test_images/` with:
 
@@ -89,13 +88,12 @@ python scripts/generate_readme_examples.py
 
 Think of the project as a **toolbox**. One program (`mf`) can call many models. Each model has one job.
 
-### Find faces and people
+### Find faces
 
 | Tool | Job in plain words |
 |------|--------------------|
 | [InsightFace](https://github.com/deepinsight/insightface) / **SCRFD** | Find faces and a few key points (eyes, nose, mouth). This is the main face finder. |
 | [dlib](http://dlib.net/) / [face_recognition](https://github.com/ageitgey/face_recognition) | A second face finder. It can catch faces the first finder misses, and the other way around. |
-| [Detectron2](https://github.com/facebookresearch/detectron2) | Find whole people (bodies), not faces. Helpful in group sports photos. |
 
 ### Turn a face into a fingerprint
 
@@ -124,7 +122,7 @@ These tools usually look at the cut-out face after SCRFD finds it. Some big kits
 
 | Tool | Job in plain words |
 |------|--------------------|
-| [sidecar-rs](https://github.com/dapperfu/sidecar-rs) | Write and update `.scar` files next to each photo. Another project ([meta_pose](../meta_pose)) can write pose notes into the same file. |
+| [sidecar-rs](https://github.com/dapperfu/sidecar-rs) | Write and update `.scar` files next to each photo. Another project ([meta_pose](../meta_pose)) can write pose and body notes into the same file. |
 
 You can list what is installed on your machine:
 
@@ -148,7 +146,7 @@ Install and scan a folder:
 
 ```bash
 docker compose up -d
-pip install -e ".[detectron2]"
+pip install -e ".[dev]"
 mf download
 mf worker                 # terminal 1
 mf scan /path/to/photos   # terminal 2
@@ -170,10 +168,10 @@ Useful commands:
 | `mf info PATH` | Print what is in the `.scar` file |
 | `mf download` | Download model files |
 
-Default `mf scan` runs InsightFace, face_recognition, and Detectron2. It does not group people until you cluster:
+Default `mf scan` runs InsightFace and face_recognition. It does not group people until you cluster:
 
 ```bash
-mf scan /photos --tools insightface,face_recognition,detectron2,hdbscan
+mf scan /photos --tools insightface,face_recognition,hdbscan
 mf scan /photos --tools scrfd,expression --run-now
 ```
 
@@ -256,7 +254,6 @@ More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordina
 
 - 主要的人脸查找（更大尺寸的 SCRFD）在 **15** 张照片里找到 **350** 张脸。
 - 另一种人脸查找（dlib）找到 **244** 张脸。
-- 人体查找（Detectron2）找到 **189** 个整个人。人体不等于人脸。人可以背对镜头。
 
 用下面的命令，可以从 `test_images/` 重新生成这些图：
 
@@ -268,13 +265,12 @@ python scripts/generate_readme_examples.py
 
 可以把这个项目看成一个**工具箱**。一个程序（`mf`）可以调用很多模型。每个模型做一件事。
 
-**找人脸和人**
+**找人脸**
 
 | 工具 | 用白话说 |
 |------|----------|
 | InsightFace / **SCRFD** | 找人脸，以及几个关键点（眼睛、鼻子、嘴）。这是主要的人脸查找。 |
 | dlib / face_recognition | 第二种人脸查找。第一种漏掉的，它有时能找到。反过来也一样。 |
-| Detectron2 | 找整个人（身体），不是脸。在团体运动照片里有用。 |
 
 **把脸变成“指纹”**
 
@@ -303,7 +299,7 @@ python scripts/generate_readme_examples.py
 
 | 工具 | 用白话说 |
 |------|----------|
-| sidecar-rs | 在每张照片旁边写入和更新 `.scar` 文件。另一个项目（meta_pose）可以把姿势信息写进同一个文件。 |
+| sidecar-rs | 在每张照片旁边写入和更新 `.scar` 文件。另一个项目（meta_pose）可以把姿势和人体信息写进同一个文件。 |
 
 查看你这台电脑上装了哪些工具：
 
@@ -325,7 +321,7 @@ mf backends
 
 ```bash
 docker compose up -d
-pip install -e ".[detectron2]"
+pip install -e ".[dev]"
 mf download
 mf worker                 # 第一个终端
 mf scan /path/to/photos   # 第二个终端
@@ -347,10 +343,10 @@ mf scan /path/to/photos --run-now
 | `mf info PATH` | 打印 `.scar` 文件里的内容 |
 | `mf download` | 下载模型文件 |
 
-默认的 `mf scan` 会运行 InsightFace、face_recognition 和 Detectron2。它不会自动把人分组。分组需要再运行 cluster：
+默认的 `mf scan` 会运行 InsightFace 和 face_recognition。它不会自动把人分组。分组需要再运行 cluster：
 
 ```bash
-mf scan /photos --tools insightface,face_recognition,detectron2,hdbscan
+mf scan /photos --tools insightface,face_recognition,hdbscan
 mf scan /photos --tools scrfd,expression --run-now
 ```
 

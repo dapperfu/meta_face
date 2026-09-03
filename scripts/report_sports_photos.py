@@ -128,8 +128,6 @@ def markdown_report(summary, photos, face_rows, comparisons, near):
            "Median face width is approximately 43 pixels. Resizing these crops cannot restore missing detail.",
            f"- **{count.get('mediapipe_blendshapes',0)} faces** yielded spatially checked MediaPipe meshes and 52 blendshapes; "
            f"{count['scrfd']-count.get('mediapipe_blendshapes',0)} attempts yielded no result or a mesh outside the expected face box.",
-           f"- Detectron2's default COCO checkpoint produced **{count['detectron2']} person detections**. Those boxes cover bodies and "
-           "must not be interpreted as face counts; crowd occlusion also reduces person detection.",
            f"- The two expression models agree on **{agree}/{count['scrfd']} labels**. Treat these as uncertain visual-expression "
            "estimates; neither agreement nor a high model score establishes a person's feelings.", "",
            "![Face detector comparison](detector_comparison.png)", "",
@@ -154,12 +152,12 @@ def markdown_report(summary, photos, face_rows, comparisons, near):
            "Open **overlay** for SCRFD boxes and five landmarks; amber boxes flag faces under 40 pixels. "
            "Open **crops** for every detected face with its photo-local index, native size and detection score. "
            "Indices do not link identities across photos.", "",
-           "| # | Photo | SCRFD 640 | SCRFD 1280 | dlib | People | Small faces | Review |",
-           "|---:|---|---:|---:|---:|---:|---:|---|"]
+           "| # | Photo | SCRFD 640 | SCRFD 1280 | dlib | Small faces | Review |",
+           "|---:|---|---:|---:|---:|---:|---|"]
     for p in photos:
         name=p["file"]
         lines.append(f"| {p['index']:02d} | {name} | {p['scrfd_640']} | {p['scrfd_1280']} | "
-                     f"{p['dlib_faces']} | {p['detectron2_people']} | {p['small_faces_under_40px']} | "
+                     f"{p['dlib_faces']} | {p['small_faces_under_40px']} | "
                      f"[overlay](overlays/{name}) · [crops](face_sheets/{name}) |")
     lines.extend(["", "### Visual notes", ""])
     for p in photos:
@@ -178,7 +176,6 @@ def markdown_report(summary, photos, face_rows, comparisons, near):
         ("SCRFD 640",326,"Baseline face detector, confidence threshold 0.5."),
         ("SCRFD 1280 + geometry",378,"Primary face detector; 5 keypoints, 106 2D landmarks, 68 projected 3D landmarks and head pose."),
         ("dlib HOG",255,"Independent CPU face detector and 68 landmarks, native image with one upsample."),
-        ("Detectron2 COCO RetinaNet",229,"Person boxes; not comparable to face boxes as the same entity."),
         ("OpenCV FER",378,"Seven expression classes, aligned crops, corrected class order; logits and softmax scores retained."),
         ("FER+",378,"Eight expression classes on grayscale crops; logits and softmax scores retained."),
         ("Yakhyo gaze",378,"Separate 90-bin yaw/pitch outputs decoded to degrees; model estimates, not verified eye direction."),
@@ -263,8 +260,11 @@ def main():
         save_json(OUT/"analysis"/f"{path.stem}.json",analysis)
         row["tools"].update(analysis["tools"])
         row.update(category=category,visual_review=note)
-        assert not row["errors"],row["errors"]
+        errors={k: v for k, v in row["errors"].items() if k != "detectron2"}
+        assert not errors, errors
         for name,payload in row["tools"].items():
+            if name == "detectron2":
+                continue
             assert payload["face_count"]==len(payload["faces"])
             assert not payload.get("errors"),payload.get("errors")
             all_tools[name]+=len(payload["faces"])
@@ -279,14 +279,12 @@ def main():
                                 unmatched_640=len(low)-len(low_matches),
                                 matched_dlib_1280=len(dlib_matches),
                                 unmatched_dlib=len(dlib)-len(dlib_matches)))
-        counts={name:payload["face_count"] for name,payload in row["tools"].items()}
         photos.append(dict(index=n,file=path.name,category=category,width=row["width"],height=row["height"],
                            megapixels=round(row["width"]*row["height"]/1e6,2),bytes=row["bytes"],
                            camera=row["exif"].get("Model",""),date=row["exif"].get("DateTimeOriginal",""),
                            exposure_seconds=row["exif"].get("ExposureTime",""),
                            aperture=row["exif"].get("FNumber",""),iso=row["exif"].get("ISOSpeedRatings",""),
                            scrfd_640=len(low),scrfd_1280=len(high),dlib_faces=len(dlib),
-                           detectron2_people=counts["detectron2"],
                            small_faces_under_40px=sum(f["small_face_under_40px"] for f in high),
                            **row["quality"],visual_review=note))
         maps={k:{f["face_index"]:f for f in v["faces"]} for k,v in analysis["tools"].items()}
@@ -324,7 +322,7 @@ def main():
                                  rows[a["index"]-1]["sha256"]==rows[b["index"]-1]["sha256"]))
     write_csv(OUT/"similar_frames.csv",near)
     versions={}
-    for pkg in ["numpy","pillow","onnxruntime","insightface","dlib","detectron2","torch","mediapipe","py-feat","emotiefflib","sidecar-rs"]:
+    for pkg in ["numpy","pillow","onnxruntime","insightface","dlib","mediapipe","py-feat","emotiefflib","sidecar-rs"]:
         try: versions[pkg]=metadata.version(pkg)
         except metadata.PackageNotFoundError: versions[pkg]=None
     summary=dict(generated_at=datetime.now(timezone.utc).isoformat(),image_count=len(rows),
