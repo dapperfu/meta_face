@@ -23,7 +23,7 @@ dependencies = [
     "faiss-gpu-cu12>=1.8.0",
     "pillow>=10.0",
     "pillow-heif>=0.16",
-    "sidecar-rs @ git+https://github.com/dapperfu/sidecar-rs.git@v0.2.1",
+    "sidecar-rs @ git+https://github.com/dapperfu/sidecar-rs.git@v0.2.4",
     "tqdm>=4.66",
     "jupyter>=1.0",
     "nbconvert>=7.0",
