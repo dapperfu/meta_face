@@ -13,7 +13,7 @@ from meta_face.config import (
     RQ_DETECT_JOB_TIMEOUT,
     RQ_MEDIAPIPE_JOB_TIMEOUT,
 )
-from meta_face.queue import enqueue_process_image
+from meta_face.queue import enqueue_annotate, enqueue_process_image, enqueue_sdk_run
 from meta_face.scanner import resolve_per_image_tools
 from meta_face.tools.registry import validate_tools
 
@@ -139,3 +139,35 @@ def test_enqueue_all_is_one_job_per_per_image_tool(tmp_path: Path) -> None:
             assert call.kwargs["depends_on"] is detect_job
         else:
             assert "depends_on" not in call.kwargs
+
+
+def test_enqueue_annotate_uses_image_queue(tmp_path: Path) -> None:
+    image_path = tmp_path / "photo.jpg"
+    image_path.write_bytes(b"\xff\xd8\xff\xd9")
+    mock_queue = MagicMock()
+    mock_queue.enqueue.return_value = MagicMock(id="annotate-job")
+
+    with patch("meta_face.queue.get_queue", return_value=mock_queue):
+        job_id = enqueue_annotate(image_path, force=True, dense_landmarks=False)
+
+    assert job_id == "annotate-job"
+    assert mock_queue.enqueue.call_args.kwargs["job_id"].startswith("annotate-")
+    assert mock_queue.enqueue.call_args.kwargs["job_timeout"] == RQ_DETECT_JOB_TIMEOUT
+    assert mock_queue.enqueue.call_args.args[1] == str(image_path.resolve())
+    assert mock_queue.enqueue.call_args.args[2] is True
+    assert mock_queue.enqueue.call_args.args[3] is False
+
+
+def test_enqueue_sdk_run_uses_image_queue() -> None:
+    mock_queue = MagicMock()
+    mock_queue.enqueue.return_value = MagicMock(id="sdk-job")
+    recipe = {"steps": [{"id": "pair", "call": "verify", "kwargs": {"img1_path": "a.jpg"}}]}
+
+    with patch("meta_face.queue.get_queue", return_value=mock_queue):
+        job_id = enqueue_sdk_run("deepface", recipe, output=None, output_format="json")
+
+    assert job_id == "sdk-job"
+    assert mock_queue.enqueue.call_args.kwargs["job_id"].startswith("sdk-deepface-")
+    assert mock_queue.enqueue.call_args.kwargs["job_timeout"] == RQ_ANALYSIS_JOB_TIMEOUT
+    assert mock_queue.enqueue.call_args.args[1] == "deepface"
+    assert mock_queue.enqueue.call_args.args[2] == recipe

@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
+from click.testing import CliRunner
 
 from meta_face.annotate import (
     annotated_output_path,
     draw_annotations,
 )
+from meta_face.cli import main
 
 
 def test_annotated_output_path_jpg() -> None:
@@ -42,3 +45,17 @@ def test_draw_annotations_smoke() -> None:
     out = draw_annotations(image, records, cluster_labels=[3])
     assert out.shape == image.shape
     assert not np.array_equal(out, image)
+
+
+def test_annotate_cli_enqueues_by_default(tmp_path: Path) -> None:
+    image = tmp_path / "photo.jpg"
+    image.write_bytes(b"\xff\xd8\xff\xd9")
+    runner = CliRunner()
+    with (
+        patch("meta_face.cli.require_insightface_runtime"),
+        patch("meta_face.queue.enqueue_annotate", return_value="ann-1") as enqueue,
+    ):
+        result = runner.invoke(main, ["annotate", str(image)])
+    assert result.exit_code == 0, result.output
+    assert "enqueued 1 annotate jobs" in result.output
+    enqueue.assert_called_once()

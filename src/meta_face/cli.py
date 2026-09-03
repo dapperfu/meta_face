@@ -74,9 +74,10 @@ def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
     help=(
         "Comma-separated real tools, or groups: all (every per-image tool, "
         "one RQ job each), insightface (scrfd + arcface), face_recognition "
-        "(dlib_detect + dlib_embed), detect (scrfd). "
-        "Crop analysis jobs wait for scrfd. Default is insightface,face_recognition "
-        "(no clustering). Run `mf tools` for what each tool scans."
+        "(dlib_detect + dlib_embed), detect (scrfd), sdk (deepface, uniface, "
+        "py_feat). Crop analysis jobs wait for scrfd. Default is "
+        "insightface,face_recognition (no clustering). Run `mf tools` for "
+        "what each tool scans."
     ),
 )
 @click.option(
@@ -548,9 +549,22 @@ def failed(queue_name: str, limit: int, job_id: str | None) -> None:
     is_flag=True,
     help="Skip 106-point landmark dots.",
 )
-def annotate(path: Path, recursive: bool, force: bool, no_dense_landmarks: bool) -> None:
+@click.option(
+    "--enqueue/--run-now",
+    default=True,
+    show_default=True,
+    help="Enqueue overlay jobs for a worker, or render inline now.",
+)
+def annotate(
+    path: Path,
+    recursive: bool,
+    force: bool,
+    no_dense_landmarks: bool,
+    enqueue: bool,
+) -> None:
     """Draw face overlays to sibling *_scrfd.* images (bbox, landmarks, pose, attributes)."""
     from meta_face.annotate import AnnotateStats, annotate_image, iter_annotate_paths
+    from meta_face.queue import enqueue_annotate
 
     try:
         require_insightface_runtime()
@@ -562,6 +576,26 @@ def annotate(path: Path, recursive: bool, force: bool, no_dense_landmarks: bool)
     if not paths:
         click.echo(f"No images found at {path}", err=True)
         sys.exit(1)
+
+    if enqueue:
+        from meta_face.annotate import annotated_output_exists
+
+        job_ids: list[str] = []
+        skipped = 0
+        for media_path in paths:
+            if annotated_output_exists(media_path) and not force:
+                skipped += 1
+                continue
+            job_ids.append(
+                enqueue_annotate(
+                    media_path, force=force, dense_landmarks=dense_landmarks
+                )
+            )
+        click.echo(
+            f"Discovered {len(paths)} images; "
+            f"enqueued {len(job_ids)} annotate jobs, skipped {skipped}."
+        )
+        return
 
     if len(paths) == 1 and paths[0] == path.resolve():
         try:

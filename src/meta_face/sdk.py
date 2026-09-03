@@ -110,6 +110,38 @@ def encode_result(value: Any) -> Any:
     )
 
 
+def write_recipe_output(
+    result: Any,
+    *,
+    output: Path | None,
+    output_format: str,
+) -> Any:
+    """Persist a recipe result. JSON without --output is returned for the caller to print."""
+    if output_format == "json":
+        encoded = encode_result(result)
+        if output is not None:
+            output.write_text(
+                json.dumps(encoded, indent=2, allow_nan=False) + "\n",
+                encoding="utf-8",
+            )
+        return encoded
+    if output is None:
+        raise ValueError("--output is required for non-JSON results")
+    if output_format == "npy":
+        with output.open("wb") as stream:
+            np.save(stream, result, allow_pickle=False)
+        return {"status": "ok", "output": str(output), "format": "npy"}
+    if output_format == "image":
+        import cv2
+
+        if not cv2.imwrite(str(output), result):
+            raise OSError(f"Could not write image: {output}")
+        return {"status": "ok", "output": str(output), "format": "image"}
+    figure = result.figure if hasattr(result, "figure") else result
+    figure.savefig(output)
+    return {"status": "ok", "output": str(output), "format": "figure"}
+
+
 def _public_attr(obj: Any, name: str) -> Any:
     if not name.isidentifier() or name.startswith("_"):
         raise ValueError(f"Only public SDK attributes are supported: {name!r}")

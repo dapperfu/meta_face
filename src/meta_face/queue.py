@@ -130,3 +130,61 @@ def enqueue_scan_path(
         failure_ttl=86400,
     )
     return job.id
+
+
+def enqueue_annotate(
+    image_path: Path,
+    *,
+    force: bool = False,
+    dense_landmarks: bool = True,
+) -> str:
+    """Enqueue overlay rendering for one image on the face-processing queue."""
+    from meta_face.jobs import annotate_media, job_id_for_path
+
+    queue = get_queue()
+    job = queue.enqueue(
+        annotate_media,
+        str(image_path.resolve()),
+        force,
+        dense_landmarks,
+        job_id=job_id_for_path("annotate", image_path),
+        failure_ttl=86400,
+        job_timeout=rq_job_timeout("annotate"),
+    )
+    return job.id
+
+
+def enqueue_sdk_run(
+    provider: str,
+    recipe: dict,
+    *,
+    output: Path | None = None,
+    output_format: str = "json",
+) -> str:
+    """Enqueue a JSON SDK recipe on the face-processing queue."""
+    import json
+
+    from meta_face.jobs import job_id_for_key, run_sdk_recipe
+
+    queue = get_queue()
+    key = json.dumps(
+        {
+            "provider": provider,
+            "recipe": recipe,
+            "output": None if output is None else str(output.resolve()),
+            "format": output_format,
+        },
+        sort_keys=True,
+        default=str,
+    )
+    job = queue.enqueue(
+        run_sdk_recipe,
+        provider,
+        recipe,
+        None if output is None else str(output.resolve()),
+        output_format,
+        job_id=job_id_for_key(f"sdk-{provider}", key),
+        failure_ttl=86400,
+        job_timeout=rq_job_timeout("sdk"),
+    )
+    return job.id

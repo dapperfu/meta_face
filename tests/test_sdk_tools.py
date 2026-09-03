@@ -75,9 +75,14 @@ def test_sdk_cli_offline_discovery_and_pair_verification(monkeypatch):
     fake_provider(monkeypatch, "deepface", module)
     request = {"steps": [{"id": "pair", "call": "verify", "kwargs": {
         "img1_path": "a.jpg", "img2_path": "b.jpg", "model_name": "SFace", "threshold": .25}}]}
-    result = runner.invoke(main, ["sdk", "run", "deepface", "-"], input=json.dumps(request))
+    result = runner.invoke(main, ["sdk", "run", "deepface", "-", "--run-now"], input=json.dumps(request))
     assert result.exit_code == 0, result.output
     assert json.loads(result.output) == {"verified": True, "distance": .125}
+
+    monkeypatch.setattr("meta_face.queue.enqueue_sdk_run", lambda *args, **kwargs: "sdk-job-1")
+    queued = runner.invoke(main, ["sdk", "run", "deepface", "-"], input=json.dumps(request))
+    assert queued.exit_code == 0, queued.output
+    assert "SDK job enqueued: sdk-job-1" in queued.output
 
 
 def test_deepface_all_heads_reuse_aligned_bgr_and_keep_every_result(monkeypatch):

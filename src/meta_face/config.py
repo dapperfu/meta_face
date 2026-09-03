@@ -157,11 +157,11 @@ SIDECAR_LOCK_TIMEOUT_SECS: float = float(os.environ.get("META_FACE_SIDECAR_LOCK_
 def rq_job_timeout(backend_key: str) -> int:
     """Per-pipeline RQ timeout so one slow tool does not share another job's budget."""
     key = backend_key.strip().lower()
-    if key in {"insightface", "face_recognition", "scrfd", "arcface", "dlib_detect", "dlib_embed"}:
+    if key in {"insightface", "face_recognition", "scrfd", "arcface", "dlib_detect", "dlib_embed", "annotate"}:
         return RQ_DETECT_JOB_TIMEOUT
     if key in {"mediapipe_blendshapes", "mediapipe"}:
         return RQ_MEDIAPIPE_JOB_TIMEOUT
-    if key in ANALYSIS_TOOLS:
+    if key in ANALYSIS_TOOLS or key == "sdk":
         return RQ_ANALYSIS_JOB_TIMEOUT
     return RQ_JOB_TIMEOUT
 

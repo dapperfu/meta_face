@@ -219,6 +219,46 @@ def scan_path(
     }
 
 
+def annotate_media(
+    image_path: str,
+    force: bool = False,
+    dense_landmarks: bool = True,
+) -> dict[str, Any]:
+    """RQ job: draw overlays to a sibling *_scrfd.* image."""
+    from meta_face.annotate import annotate_image
+
+    media_path = Path(image_path).resolve()
+    out = annotate_image(media_path, force=force, dense_landmarks=dense_landmarks)
+    return {
+        "status": "skipped" if out is None else "ok",
+        "path": str(media_path),
+        "output": None if out is None else str(out),
+    }
+
+
+def run_sdk_recipe(
+    provider: str,
+    recipe: dict[str, Any],
+    output: str | None = None,
+    output_format: str = "json",
+) -> dict[str, Any]:
+    """RQ job: execute a DeepFace / UniFace / Py-Feat JSON recipe."""
+    from meta_face.sdk import SDKSession, write_recipe_output
+
+    result = SDKSession(provider).run(recipe)
+    encoded = write_recipe_output(
+        result,
+        output=None if output is None else Path(output),
+        output_format=output_format,
+    )
+    return {"status": "ok", "provider": provider, "result": encoded}
+
+
 def job_id_for_path(prefix: str, path: Path) -> str:
     digest = hashlib.sha256(str(path.resolve()).encode()).hexdigest()[:24]
+    return f"{prefix}-{digest}"
+
+
+def job_id_for_key(prefix: str, key: str) -> str:
+    digest = hashlib.sha256(key.encode()).hexdigest()[:24]
     return f"{prefix}-{digest}"

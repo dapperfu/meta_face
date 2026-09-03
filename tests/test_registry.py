@@ -40,9 +40,8 @@ def test_validate_tools_rejects_unknown() -> None:
         validate_tools(["not_a_tool"])
 
 
-def test_detect_and_mediapipe_aliases() -> None:
-    assert validate_tools(["detect"]) == ["scrfd"]
-    assert validate_tools(["mediapipe"]) == ["mediapipe_blendshapes"]
+def test_sdk_group_expands_to_independent_providers() -> None:
+    assert validate_tools(["sdk"]) == ["deepface", "uniface", "py_feat"]
 
 
 def test_all_expands_to_every_per_image_tool() -> None:

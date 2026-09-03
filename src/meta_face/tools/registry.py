@@ -23,6 +23,7 @@ TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "insightface": ("scrfd", "arcface"),
     "face_recognition": ("dlib_detect", "dlib_embed"),
     "detect": ("scrfd",),
+    "sdk": ("deepface", "uniface", "py_feat"),
     "all": PER_IMAGE_TOOL_ORDER,
 }
 
