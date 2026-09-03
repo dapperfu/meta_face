@@ -181,13 +181,13 @@ Default `mf scan` runs InsightFace and face_recognition. It does not group peopl
 
 ```bash
 mf scan /photos --tools insightface,face_recognition,hdbscan
-mf scan /photos --tools scrfd,expression --run-now
+mf scan /photos --tools all
+mf scan /photos --tools scrfd,opencv_fer,fer_plus --run-now
 mf scan /photos --tools detect
-mf scan /photos --tools analysis
 mf scan /photos --tools mediapipe
 ```
 
-`detect`, `analysis`, and `mediapipe` match the sports-review phases. Each analysis tool is its own Redis Queue job, writes its own sidecar section under the file lock, and has its own timeout (detection 10 minutes, ONNX analysis 15 minutes, MediaPipe 30 minutes; override with `META_FACE_DETECT_JOB_TIMEOUT`, `META_FACE_ANALYSIS_JOB_TIMEOUT`, `META_FACE_MEDIAPIPE_JOB_TIMEOUT`). Crop analysis jobs wait for SCRFD on that photo.
+`all` expands to every per-image tool and enqueues **one Redis Queue job per tool** (21 tools → 21 jobs per image). Crop analysis jobs wait for SCRFD on that photo. Timeouts: detection 10 minutes, ONNX analysis 15 minutes, MediaPipe 30 minutes (`META_FACE_DETECT_JOB_TIMEOUT`, `META_FACE_ANALYSIS_JOB_TIMEOUT`, `META_FACE_MEDIAPIPE_JOB_TIMEOUT`). List what each tool scans with `mf tools`.
 
 More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordinates](docs/COORDINATES.md).
 
@@ -370,7 +370,8 @@ mf scan /path/to/photos --run-now
 
 ```bash
 mf scan /photos --tools insightface,face_recognition,hdbscan
-mf scan /photos --tools scrfd,expression --run-now
+mf scan /photos --tools all
+mf scan /photos --tools scrfd,opencv_fer,fer_plus --run-now
 ```
 
 更多说明：[notebooks/](notebooks/)、[SDK 工具](docs/SDK_TOOLS.md)、[坐标](docs/COORDINATES.md)。

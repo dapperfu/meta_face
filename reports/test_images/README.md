@@ -125,7 +125,7 @@ Reproduce from the repository root using the existing environment. The applicati
 
 ```bash
 venv_meta_face/bin/mf scan test_images --tools detect
-venv_meta_face/bin/mf scan test_images --tools analysis
+venv_meta_face/bin/mf scan test_images --tools opencv_fer,fer_plus,yakhyo_gaze,bisenet,face_antispoof_onnx
 venv_meta_face/bin/mf scan test_images --tools mediapipe
 venv_meta_face/bin/python scripts/report_sports_photos.py
 ```

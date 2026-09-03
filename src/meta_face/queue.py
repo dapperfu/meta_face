@@ -58,7 +58,7 @@ def enqueue_process_image(
     tools: list[str],
     force: bool = False,
 ) -> list[str]:
-    """Enqueue one RQ job per detection pipeline or analysis tool. Returns job ids."""
+    """Enqueue one RQ job per per-image tool. Returns job ids."""
     from meta_face.jobs import job_id_for_path, process_image
     from meta_face.scanner import needs_processing, resolve_backend_job_groups
 
@@ -85,7 +85,7 @@ def enqueue_process_image(
             force,
             **enqueue_kwargs,
         )
-        if backend_key == "insightface":
+        if backend_key == "scrfd":
             detect_job = job
         job_ids.append(job.id)
     return job_ids

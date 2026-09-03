@@ -59,15 +59,6 @@ ANALYSIS_TOOLS: frozenset[str] = frozenset(
     }
 )
 
-# Sports-review ONNX crop tools (the `analysis` meta-tool; MediaPipe is separate).
-SPORTS_ANALYSIS_TOOLS: tuple[str, ...] = (
-    "opencv_fer",
-    "fer_plus",
-    "yakhyo_gaze",
-    "bisenet",
-    "face_antispoof_onnx",
-)
-
 # These SDKs detect their own faces; their face indices belong to their own namespace.
 INDEPENDENT_ANALYSIS_TOOLS = frozenset({"deepface", "uniface", "py_feat"})
 CROP_ANALYSIS_TOOLS = ANALYSIS_TOOLS - INDEPENDENT_ANALYSIS_TOOLS
@@ -76,10 +67,43 @@ CROP_ANALYSIS_TOOLS = ANALYSIS_TOOLS - INDEPENDENT_ANALYSIS_TOOLS
 DETECTION_TOOLS: frozenset[str] = frozenset(
     {"scrfd", "arcface", "dlib_detect", "dlib_embed"}
 )
-PER_IMAGE_TOOLS: frozenset[str] = DETECTION_TOOLS | ANALYSIS_TOOLS
+PER_IMAGE_TOOL_ORDER: tuple[str, ...] = (
+    "scrfd",
+    "arcface",
+    "dlib_detect",
+    "dlib_embed",
+) + tuple(sorted(ANALYSIS_TOOLS))
+PER_IMAGE_TOOLS: frozenset[str] = frozenset(PER_IMAGE_TOOL_ORDER)
 EMBEDDING_TOOLS: frozenset[str] = frozenset({"arcface", "dlib_embed"})
 AGGREGATE_TOOLS: frozenset[str] = frozenset({"cluster", "cluster_dlib"})
 ALL_TOOLS: frozenset[str] = PER_IMAGE_TOOLS | AGGREGATE_TOOLS
+
+# One-line scan purpose for `mf tools` / --tools help.
+TOOL_SCANS_FOR: dict[str, str] = {
+    "scrfd": "Face boxes and 5-point landmarks (InsightFace)",
+    "arcface": "512-d identity embeddings for SCRFD faces",
+    "dlib_detect": "Face boxes and 68-point landmarks (dlib HOG/CNN)",
+    "dlib_embed": "128-d identity embeddings for dlib faces",
+    "cluster": "HDBSCAN groups over ArcFace embeddings (whole collection)",
+    "cluster_dlib": "HDBSCAN groups over dlib embeddings (whole collection)",
+    "emotiefflib": "7-class emotion on SCRFD crops",
+    "opencv_fer": "7-class expression on SCRFD crops",
+    "mediapipe_blendshapes": "Face mesh and 52 ARKit blendshapes on SCRFD crops",
+    "fer_plus": "8-class FER+ emotion on SCRFD crops",
+    "libreface": "Action units, emotion, and gaze on SCRFD crops",
+    "openface3": "Action units, emotion, and gaze on SCRFD crops",
+    "py_feat": "Own detect plus AU / emotion / identity columns",
+    "emonet": "Valence and arousal on SCRFD crops",
+    "deepface": "Own detect plus embeddings, attributes, optional liveness",
+    "yakhyo_gaze": "Gaze yaw and pitch on SCRFD crops",
+    "l2cs_net": "Gaze yaw and pitch (L2CS-Net) on SCRFD crops",
+    "fairface": "Race / age / gender scores on SCRFD crops",
+    "bisenet": "Face-part mask (hair, skin, eyes, mouth) on SCRFD crops",
+    "face_antispoof_onnx": "Live vs spoof scores on SCRFD crops",
+    "face_anti_spoofing": "Silent-Face live vs spoof scores on SCRFD crops",
+    "uniface": "Own detect plus attributes, gaze, parsing, liveness",
+    "inspireface": "Own detect plus optional attributes",
+}
 # Meta-tools for `mf scan` when --tools is omitted (expanded via tools/registry).
 DEFAULT_SCAN_META_TOOLS: tuple[str, ...] = (
     "insightface",
@@ -123,6 +147,9 @@ RQ_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_JOB_TIMEOUT", "3600"))
 RQ_DETECT_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_DETECT_JOB_TIMEOUT", "600"))
 RQ_ANALYSIS_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_ANALYSIS_JOB_TIMEOUT", "900"))
 RQ_MEDIAPIPE_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_MEDIAPIPE_JOB_TIMEOUT", "1800"))
+# How long a writer waits for `{sidecar}.lock` before failing. The lock file
+# exists only while a write is in progress (sidecar-rs >= 0.2.4).
+SIDECAR_LOCK_TIMEOUT_SECS: float = float(os.environ.get("META_FACE_SIDECAR_LOCK_TIMEOUT", "10"))
 
 
 def rq_job_timeout(backend_key: str) -> int:

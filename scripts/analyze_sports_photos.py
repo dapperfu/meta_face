@@ -3,11 +3,12 @@
 Detection and geometry only: no recognition or demographic heads are loaded.
 Original JPEGs are read-only. Results use the project's normalized sidecars.
 
-Prefer the application pipeline for the same phases as independent RQ jobs:
+Prefer the application pipeline. Each selected tool is its own RQ job:
 
     mf scan test_images --tools detect
-    mf scan test_images --tools analysis
+    mf scan test_images --tools opencv_fer,fer_plus,yakhyo_gaze,bisenet,face_antispoof_onnx
     mf scan test_images --tools mediapipe
+    mf scan test_images --tools all
 """
 from __future__ import annotations
 

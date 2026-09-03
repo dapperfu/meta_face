@@ -72,15 +72,11 @@ def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
     default=",".join(DEFAULT_SCAN_META_TOOLS),
     show_default=True,
     help=(
-        "Comma-separated tools: insightface (scrfd + arcface), "
-        "face_recognition (dlib_detect + dlib_embed), "
-        "expression/emotion/gaze/au/blendshapes/attributes/parsing/liveness meta-tools, "
-        "or individual tools (emotiefflib, opencv_fer, mediapipe_blendshapes, libreface, "
-        "openface3, yakhyo_gaze, fairface, bisenet, uniface, deepface, ...). "
-        "Sports-review phases: detect (scrfd), analysis (opencv_fer, fer_plus, "
-        "yakhyo_gaze, bisenet, face_antispoof_onnx), mediapipe. "
-        "Each analysis tool is a separate RQ job. "
-        "Default runs insightface and face_recognition (no clustering)."
+        "Comma-separated real tools, or groups: all (every per-image tool, "
+        "one RQ job each), insightface (scrfd + arcface), face_recognition "
+        "(dlib_detect + dlib_embed), detect (scrfd). "
+        "Crop analysis jobs wait for scrfd. Default is insightface,face_recognition "
+        "(no clustering). Run `mf tools` for what each tool scans."
     ),
 )
 @click.option(
@@ -326,26 +322,39 @@ def backends_cmd() -> None:
 @main.command("tools")
 def tools_cmd() -> None:
     """List all registered face tools and runtime availability."""
-    from meta_face.config import AGGREGATE_TOOLS, DETECTION_TOOLS
+    from meta_face.config import (
+        AGGREGATE_TOOLS,
+        DETECTION_TOOLS,
+        PER_IMAGE_TOOL_ORDER,
+        TOOL_SCANS_FOR,
+    )
     from meta_face.tools.registry import TOOL_GROUPS
     from meta_face.tools.analysis.registry import list_analysis_tools, tool_availability
 
+    def _scans(name: str) -> str:
+        purpose = TOOL_SCANS_FOR.get(name, "")
+        return f"  {name}: {purpose}" if purpose else f"  {name}"
+
     click.echo("Detection tools:")
-    for name in sorted(DETECTION_TOOLS):
-        click.echo(f"  {name}")
-    click.echo("\nAnalysis tools (DeepFace, UniFace and Py-Feat detect independently):")
+    for name in ("scrfd", "arcface", "dlib_detect", "dlib_embed"):
+        if name in DETECTION_TOOLS:
+            click.echo(_scans(name))
+    click.echo("\nAnalysis tools (deepface, uniface, py_feat detect independently):")
     for name in list_analysis_tools():
         issue = tool_availability(name)
         status = "available" if issue is None else "unavailable"
-        click.echo(f"  {name}: {status}")
+        click.echo(f"{_scans(name)} [{status}]")
         if issue:
             click.echo(f"    {issue}")
-    click.echo("\nAggregate tools:")
+    click.echo("\nAggregate tools (collection-level, not per-image jobs):")
     for name in sorted(AGGREGATE_TOOLS):
-        click.echo(f"  {name}")
-    click.echo("\nMeta-tool groups:")
+        click.echo(_scans(name))
+    click.echo("\nBulk / convenience groups (each expanded tool is its own RQ job):")
     for group, members in sorted(TOOL_GROUPS.items()):
-        click.echo(f"  {group}: {', '.join(members)}")
+        extra = ""
+        if group == "all":
+            extra = f" ({len(PER_IMAGE_TOOL_ORDER)} jobs per image)"
+        click.echo(f"  {group}: {', '.join(members)}{extra}")
 
 
 @main.command("download")

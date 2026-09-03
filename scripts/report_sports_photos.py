@@ -240,7 +240,7 @@ def markdown_report(summary, photos, face_rows, comparisons, near):
                   "venv_meta_face/bin/python scripts/analyze_sports_photos.py --phase mediapipe",
                   "venv_meta_face/bin/python scripts/report_sports_photos.py", "```", "",
                   "Inference stages reuse completed JSON files by default. `--force` recomputes the requested stage; "
-                  "rerun downstream stages after changing detections. Do not substitute the ordinary `mf scan --tools all_analysis` "
+                  "rerun downstream stages after changing detections. Do not substitute `mf scan --tools all` "
                   "command for this run, because its current wrappers differ as documented above.", ""])
     (OUT/"README.md").write_text("\n".join(lines))
 

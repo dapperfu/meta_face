@@ -7,8 +7,8 @@ from meta_face.config import (
     ALL_TOOLS,
     ANALYSIS_TOOLS,
     CROP_ANALYSIS_TOOLS,
+    PER_IMAGE_TOOL_ORDER,
     PER_IMAGE_TOOLS,
-    SPORTS_ANALYSIS_TOOLS,
 )
 
 TOOL_ALIASES: dict[str, str] = {
@@ -17,40 +17,13 @@ TOOL_ALIASES: dict[str, str] = {
     "mediapipe": "mediapipe_blendshapes",
 }
 
-# Meta-tool names that expand to several real tools. "insightface" is the
-# single SCRFD detection + ArcFace recognition pass.
+# Small convenience groups only. Overlapping category aliases (expression,
+# emotion, gaze, …) are gone: pick real tools, or `all` for every per-image tool.
 TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "insightface": ("scrfd", "arcface"),
     "face_recognition": ("dlib_detect", "dlib_embed"),
-    # Sports-review phases: detection only, ONNX crop analysis, MediaPipe last.
     "detect": ("scrfd",),
-    "analysis": SPORTS_ANALYSIS_TOOLS,
-    # Analysis meta-tools (crop-based; require scrfd).
-    "expression": (
-        "emotiefflib",
-        "opencv_fer",
-        "mediapipe_blendshapes",
-        "fer_plus",
-    ),
-    "emotion": (
-        "emotiefflib",
-        "opencv_fer",
-        "fer_plus",
-        "deepface",
-        "emonet",
-    ),
-    "au": ("libreface", "openface3", "py_feat"),
-    "gaze": ("yakhyo_gaze", "l2cs_net", "libreface", "openface3", "uniface"),
-    "blendshapes": ("mediapipe_blendshapes",),
-    "attributes": ("fairface", "deepface"),
-    "parsing": ("bisenet", "uniface"),
-    "liveness": ("face_antispoof_onnx", "face_anti_spoofing", "uniface", "inspireface"),
-    "face_analysis": (
-        "emotiefflib",
-        "opencv_fer",
-        "mediapipe_blendshapes",
-    ),
-    "all_analysis": tuple(sorted(ANALYSIS_TOOLS)),
+    "all": PER_IMAGE_TOOL_ORDER,
 }
 
 

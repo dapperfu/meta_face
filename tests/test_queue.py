@@ -6,7 +6,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from meta_face.config import (
+    CROP_ANALYSIS_TOOLS,
     DEFAULT_TOOLS,
+    PER_IMAGE_TOOL_ORDER,
     RQ_ANALYSIS_JOB_TIMEOUT,
     RQ_DETECT_JOB_TIMEOUT,
     RQ_MEDIAPIPE_JOB_TIMEOUT,
@@ -16,12 +18,12 @@ from meta_face.scanner import resolve_per_image_tools
 from meta_face.tools.registry import validate_tools
 
 
-def test_enqueue_process_image_one_job_per_backend(tmp_path: Path) -> None:
+def test_enqueue_process_image_one_job_per_tool(tmp_path: Path) -> None:
     image_path = tmp_path / "photo.jpg"
     image_path.write_bytes(b"\xff\xd8\xff\xd9")
 
     mock_queue = MagicMock()
-    mock_jobs = [MagicMock(id=f"job-{i}") for i in range(2)]
+    mock_jobs = [MagicMock(id=f"job-{i}") for i in range(4)]
     mock_queue.enqueue.side_effect = mock_jobs
 
     with (
@@ -30,16 +32,18 @@ def test_enqueue_process_image_one_job_per_backend(tmp_path: Path) -> None:
     ):
         job_ids = enqueue_process_image(image_path, list(DEFAULT_TOOLS), force=False)
 
-    assert job_ids == ["job-0", "job-1"]
-    assert mock_queue.enqueue.call_count == 2
-    job_id_prefixes = [call.kwargs["job_id"] for call in mock_queue.enqueue.call_args_list]
-    assert job_id_prefixes[0].startswith("image-insightface-")
-    assert job_id_prefixes[1].startswith("image-face_recognition-")
+    assert job_ids == ["job-0", "job-1", "job-2", "job-3"]
+    assert mock_queue.enqueue.call_count == 4
+    prefixes = [call.kwargs["job_id"] for call in mock_queue.enqueue.call_args_list]
+    assert prefixes[0].startswith("image-scrfd-")
+    assert prefixes[1].startswith("image-arcface-")
+    assert prefixes[2].startswith("image-dlib_detect-")
+    assert prefixes[3].startswith("image-dlib_embed-")
     timeouts = [call.kwargs["job_timeout"] for call in mock_queue.enqueue.call_args_list]
-    assert timeouts == [RQ_DETECT_JOB_TIMEOUT, RQ_DETECT_JOB_TIMEOUT]
+    assert timeouts == [RQ_DETECT_JOB_TIMEOUT] * 4
 
 
-def test_enqueue_process_image_skips_satisfied_backends(tmp_path: Path) -> None:
+def test_enqueue_process_image_skips_satisfied_tools(tmp_path: Path) -> None:
     image_path = tmp_path / "photo.jpg"
     image_path.write_bytes(b"\xff\xd8\xff\xd9")
 
@@ -57,14 +61,26 @@ def test_enqueue_process_image_skips_satisfied_backends(tmp_path: Path) -> None:
 
     assert job_ids == ["job-dlib"]
     assert mock_queue.enqueue.call_count == 1
-    assert mock_queue.enqueue.call_args.args[2] == ["dlib_detect", "dlib_embed"]
+    assert mock_queue.enqueue.call_args.args[2] == ["dlib_detect"]
 
 
-def test_enqueue_sports_phases_are_independent_jobs(tmp_path: Path) -> None:
+def test_enqueue_crop_analysis_waits_for_scrfd(tmp_path: Path) -> None:
     image_path = tmp_path / "photo.jpg"
     image_path.write_bytes(b"\xff\xd8\xff\xd9")
 
-    tools = resolve_per_image_tools(validate_tools(["detect", "analysis", "mediapipe"]))
+    tools = resolve_per_image_tools(
+        validate_tools(
+            [
+                "detect",
+                "opencv_fer",
+                "fer_plus",
+                "yakhyo_gaze",
+                "bisenet",
+                "face_antispoof_onnx",
+                "mediapipe",
+            ]
+        )
+    )
     mock_queue = MagicMock()
     mock_jobs = [MagicMock(id=f"job-{i}") for i in range(7)]
     mock_queue.enqueue.side_effect = mock_jobs
@@ -78,7 +94,7 @@ def test_enqueue_sports_phases_are_independent_jobs(tmp_path: Path) -> None:
     assert job_ids == [f"job-{i}" for i in range(7)]
     prefixes = [call.kwargs["job_id"].split("-")[1] for call in mock_queue.enqueue.call_args_list]
     assert prefixes == [
-        "insightface",
+        "scrfd",
         "opencv_fer",
         "fer_plus",
         "yakhyo_gaze",
@@ -93,3 +109,33 @@ def test_enqueue_sports_phases_are_independent_jobs(tmp_path: Path) -> None:
     assert timeouts[0] == RQ_DETECT_JOB_TIMEOUT
     assert timeouts[1] == RQ_ANALYSIS_JOB_TIMEOUT
     assert timeouts[-1] == RQ_MEDIAPIPE_JOB_TIMEOUT
+
+
+def test_enqueue_all_is_one_job_per_per_image_tool(tmp_path: Path) -> None:
+    image_path = tmp_path / "photo.jpg"
+    image_path.write_bytes(b"\xff\xd8\xff\xd9")
+
+    tools = resolve_per_image_tools(validate_tools(["all"]))
+    mock_queue = MagicMock()
+    mock_jobs = [MagicMock(id=f"job-{i}") for i in range(len(PER_IMAGE_TOOL_ORDER))]
+    mock_queue.enqueue.side_effect = mock_jobs
+
+    with (
+        patch("meta_face.queue.get_queue", return_value=mock_queue),
+        patch("meta_face.scanner.needs_processing", return_value=True),
+    ):
+        job_ids = enqueue_process_image(image_path, tools, force=False)
+
+    assert len(job_ids) == len(PER_IMAGE_TOOL_ORDER)
+    prefixes = [call.kwargs["job_id"].split("-")[1] for call in mock_queue.enqueue.call_args_list]
+    assert prefixes == list(PER_IMAGE_TOOL_ORDER)
+    detect_job = mock_jobs[0]
+    for call, tool in zip(
+        mock_queue.enqueue.call_args_list,
+        PER_IMAGE_TOOL_ORDER,
+        strict=True,
+    ):
+        if tool in CROP_ANALYSIS_TOOLS:
+            assert call.kwargs["depends_on"] is detect_job
+        else:
+            assert "depends_on" not in call.kwargs

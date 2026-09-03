@@ -6,7 +6,7 @@ import importlib
 
 import pytest
 
-from meta_face.config import ALL_TOOLS, ANALYSIS_TOOLS, TOOL_VERSIONS
+from meta_face.config import ALL_TOOLS, ANALYSIS_TOOLS, PER_IMAGE_TOOL_ORDER, TOOL_VERSIONS
 from meta_face.tools.analysis.registry import ANALYSIS_TOOL_NAMES, list_analysis_tools, tool_availability
 from meta_face.tools.registry import TOOL_GROUPS, expand_dependencies, validate_tools
 
@@ -33,13 +33,6 @@ def test_analysis_module_imports(tool_name: str) -> None:
     assert hasattr(mod, "analyze_faces")
 
 
-def test_expression_meta_tool_expands() -> None:
-    tools = validate_tools(["expression"])
-    assert "emotiefflib" in tools
-    assert "opencv_fer" in tools
-    assert "mediapipe_blendshapes" in tools
-
-
 def test_expand_dependencies_adds_scrfd_for_analysis() -> None:
     deps = expand_dependencies(["emotiefflib"])
     assert deps[0] == "scrfd"
@@ -52,18 +45,7 @@ def test_tool_availability_returns_message_or_none() -> None:
         assert issue is None or isinstance(issue, str)
 
 
-def test_face_analysis_group_is_phase1_subset() -> None:
-    members = set(TOOL_GROUPS["face_analysis"])
-    assert members <= ANALYSIS_TOOLS
-    assert "emotiefflib" in members
-
-
-def test_sports_analysis_group_excludes_mediapipe() -> None:
-    assert "mediapipe_blendshapes" not in TOOL_GROUPS["analysis"]
-    assert list(TOOL_GROUPS["analysis"]) == [
-        "opencv_fer",
-        "fer_plus",
-        "yakhyo_gaze",
-        "bisenet",
-        "face_antispoof_onnx",
-    ]
+def test_all_group_is_every_per_image_tool() -> None:
+    assert TOOL_GROUPS["all"] == PER_IMAGE_TOOL_ORDER
+    assert set(TOOL_GROUPS["all"]) == set(validate_tools(["all"]))
+    assert set(TOOL_GROUPS) == {"insightface", "face_recognition", "detect", "all"}

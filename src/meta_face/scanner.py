@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from meta_face.config import (
-    AGGREGATE_TOOLS, ANALYSIS_TOOLS, CROP_ANALYSIS_TOOLS, DEFAULT_TOOLS, PER_IMAGE_TOOLS,
+    AGGREGATE_TOOLS,
+    ANALYSIS_TOOLS,
+    CROP_ANALYSIS_TOOLS,
+    DEFAULT_TOOLS,
+    PER_IMAGE_TOOLS,
 )
 from meta_face.imaging import is_image_path
 from meta_face.sidecar import load_or_create, tool_is_current
@@ -36,27 +40,14 @@ def normalize_tools(tools: list[str]) -> list[str]:
     return normalized
 
 
-# Detection pipelines stay bundled (one detector pass). Each analysis tool
-# is its own RQ job so MediaPipe, ONNX heads, and detection write independently.
-DETECTION_JOB_GROUPS: tuple[tuple[str, frozenset[str]], ...] = (
-    ("insightface", frozenset({"scrfd", "arcface"})),
-    ("face_recognition", frozenset({"dlib_detect", "dlib_embed"})),
-)
-BACKEND_JOB_GROUPS = DETECTION_JOB_GROUPS
-
-
 def resolve_backend_job_groups(per_image_tools: list[str]) -> list[tuple[str, list[str]]]:
-    """Split per-image tools into one RQ job per detection pipeline or analysis tool."""
+    """One RQ job per per-image tool (N tools on one image => N tasks)."""
     groups: list[tuple[str, list[str]]] = []
-    claimed: set[str] = set()
-    for backend_key, members in DETECTION_JOB_GROUPS:
-        group_tools = [tool for tool in per_image_tools if tool in members]
-        if group_tools:
-            groups.append((backend_key, group_tools))
-            claimed.update(group_tools)
+    seen: set[str] = set()
     for tool in per_image_tools:
-        if tool in ANALYSIS_TOOLS and tool not in claimed:
+        if tool in PER_IMAGE_TOOLS and tool not in seen:
             groups.append((tool, [tool]))
+            seen.add(tool)
     return groups
 
 
