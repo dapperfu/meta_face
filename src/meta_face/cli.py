@@ -29,8 +29,8 @@ from meta_face.deps import (
     require_insightface_runtime,
 )
 from meta_face.queue import (
+    enqueue_add_image,
     enqueue_cluster,
-    enqueue_process_image,
     enqueue_scan_path,
     failed_job_traceback,
     iter_failed_jobs,
@@ -40,7 +40,6 @@ from meta_face.scanner import (
     resolve_cluster_embedding_tool,
     resolve_per_image_tools,
     run_cluster_requested,
-    scan_directory_level,
 )
 from meta_face.sidecar import get_face_section, list_face_tools, sidecar_path_for_media
 from meta_face.tools.registry import validate_tools
@@ -79,7 +78,7 @@ def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
         "openface3, yakhyo_gaze, fairface, bisenet, uniface, deepface, ...). "
         "Sports-review phases: detect (scrfd), analysis (opencv_fer, fer_plus, "
         "yakhyo_gaze, bisenet, face_antispoof_onnx), mediapipe. "
-        "Each analysis tool is a separate RQ job. "
+        "Each tool is a separate RQ job. "
         "Default runs insightface and face_recognition (no clustering)."
     ),
 )
@@ -149,44 +148,33 @@ def scan(
         except PipelineDependencyError as exc:
             _exit_on_dependency_error(exc)
 
-    stats, to_enqueue, subdirs = scan_directory_level(path, tool_list, force=force)
+    queued: list[str] = []
+    if per_image_tools and path.is_file():
+        add_job_id = enqueue_add_image(path.resolve(), per_image_tools, force=force)
+        click.echo(f"Image job enqueued: {add_job_id}")
+        queued.append(add_job_id)
+    elif per_image_tools:
+        scan_job_id = enqueue_scan_path(
+            path.resolve(),
+            per_image_tools,
+            force=force,
+            recursive=recursive,
+        )
+        click.echo(f"Scan job enqueued: {scan_job_id}")
+        queued.append(scan_job_id)
 
-    scan_job_ids: list[str] = []
-    if recursive and subdirs:
-        for subdir in subdirs:
-            scan_job_ids.append(
-                enqueue_scan_path(subdir, tool_list, force=force, recursive=recursive)
-            )
-
-    backend_job_ids: list[str] = []
-    if per_image_tools:
-        for image_path in to_enqueue:
-            backend_job_ids.extend(
-                enqueue_process_image(image_path, per_image_tools, force=force)
-            )
-
-    cluster_job_id = None
     if run_cluster:
         cluster_job_id = enqueue_cluster(
             path.resolve(),
             force=force,
             embedding_tool=embedding_tool,
         )
-
-    click.echo(
-        f"Queued {len(scan_job_ids)} directory scan job(s), "
-        f"{len(backend_job_ids)} backend job(s)."
-    )
-    if stats.discovered:
-        click.echo(
-            f"At scan root: discovered {stats.discovered} image(s); "
-            f"enqueued {stats.enqueued}; skipped {stats.skipped}."
-        )
-    if cluster_job_id:
         click.echo(f"Cluster job enqueued: {cluster_job_id}")
-    if not scan_job_ids and not backend_job_ids and not cluster_job_id:
+        queued.append(cluster_job_id)
+
+    if not queued:
         click.echo("Nothing to enqueue.")
-        sys.exit(0 if stats.discovered else 1)
+        sys.exit(1)
 
 
 def _scan_inline(
@@ -236,21 +224,30 @@ def _scan_inline(
 
             for image_path in to_enqueue:
                 image_ok = False
+                image_failed = False
                 image_faces = 0
-                for backend_key, group_tools in resolve_backend_job_groups(per_image_tools):
+                ran = False
+                for tool, group_tools in resolve_backend_job_groups(per_image_tools):
+                    ran = True
                     try:
                         result = process_image(str(image_path), group_tools, force=force)
                     except Exception as exc:
+                        image_failed = True
                         with result_lock:
-                            errors.append(f"{image_path} [{backend_key}]: {exc}")
+                            errors.append(f"{image_path} [{tool}]: {exc}")
                         continue
                     if result.get("status") == "ok":
                         image_ok = True
                         image_faces = max(image_faces, int(result.get("face_count", 0)))
+                    elif result.get("status") != "skipped":
+                        image_failed = True
                 if image_ok:
                     with result_lock:
                         processed += 1
                         faces_total += image_faces
+                elif ran and not image_failed:
+                    with stats_lock:
+                        stats.skipped += 1
         except Exception as exc:
             with result_lock:
                 errors.append(f"{dir_path}: {exc}")
@@ -452,11 +449,26 @@ def download(backend: str, model: str, force: bool) -> None:
 
 @main.command()
 @click.option("--workers", default=1, show_default=True, help="Number of RQ worker processes.")
-@click.option("--cluster/--no-cluster", default=True, show_default=True, help="Also listen on cluster queue.")
-def worker(workers: int, cluster: bool) -> None:
+@click.option(
+    "--queues",
+    default="scan,images,image-add,face,cluster",
+    show_default=True,
+    help="Comma-separated stages: scan, images, image-add, face, cluster.",
+)
+def worker(workers: int, queues: str) -> None:
     """Start RQ worker(s) connected to Redis."""
-    click.echo(f"Starting {workers} worker(s) on redis://{REDIS_HOST}:{REDIS_PORT}/")
-    start_workers(workers, cluster=cluster)
+    from meta_face.worker import resolve_worker_queues
+
+    try:
+        queue_names = resolve_worker_queues([part.strip() for part in queues.split(",")])
+    except ValueError as exc:
+        click.echo(str(exc), err=True)
+        sys.exit(1)
+    click.echo(
+        f"Starting {workers} worker(s) on {', '.join(queue_names)} "
+        f"(redis://{REDIS_HOST}:{REDIS_PORT}/)"
+    )
+    start_workers(workers, queues=[part.strip() for part in queues.split(",")])
 
 
 @main.command()
@@ -623,3 +635,31 @@ def info(path: Path, as_json: bool) -> None:
                 click.echo(f"  {key}: {len(value)} item(s)")
             else:
                 click.echo(f"  {key}: {value}")
+
+
+@main.command("clean-locks")
+@click.argument("path", type=click.Path(exists=True, path_type=Path))
+def clean_locks(path: Path) -> None:
+    """Delete leftover *.scar.lock files under PATH that no writer is holding."""
+    if path.is_dir():
+        candidates = list(path.rglob("*.scar.lock"))
+    elif path.name.endswith(".scar.lock"):
+        candidates = [path]
+    else:
+        scar_path = sidecar_path_for_media(path)
+        candidates = [scar_path.with_name(f"{scar_path.name}.lock")]
+    lock_paths = sorted(lock_path for lock_path in candidates if lock_path.exists())
+    in_use = [lock_path for lock_path in lock_paths if not _release_stale_lock(lock_path)]
+    click.echo(f"Removed {len(lock_paths) - len(in_use)} stale lock file(s); {len(in_use)} in use.")
+
+
+def _release_stale_lock(lock_path: Path) -> bool:
+    """Delete lock_path when no writer holds it. Returns False when one does."""
+    from sidecar_rs import LockTimeout, clear_sidecar_lock
+
+    scar_path = lock_path.with_suffix("")
+    try:
+        clear_sidecar_lock(scar_path, lock_timeout_s=0)
+    except LockTimeout:
+        return False
+    return True
