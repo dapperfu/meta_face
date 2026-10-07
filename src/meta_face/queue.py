@@ -8,14 +8,16 @@ from redis import Redis
 from rq import Queue
 
 from meta_face.config import (
-    CROP_ANALYSIS_TOOLS,
     RQ_CLUSTER_QUEUE_NAME,
+    RQ_IMAGE_ADD_QUEUE_NAME,
+    RQ_IMAGE_QUEUE_NAME,
     RQ_JOB_TIMEOUT,
     RQ_QUEUE_NAME,
     RQ_SCAN_QUEUE_NAME,
     REDIS_URL,
     rq_job_timeout,
 )
+from meta_face.job_ids import job_id_for_path
 
 
 def get_redis() -> Redis:
@@ -26,12 +28,24 @@ def get_queue(name: str | None = None) -> Queue:
     return Queue(name or RQ_QUEUE_NAME, connection=get_redis(), default_timeout=RQ_JOB_TIMEOUT)
 
 
+def get_face_queue() -> Queue:
+    return get_queue(RQ_QUEUE_NAME)
+
+
 def get_cluster_queue() -> Queue:
     return get_queue(RQ_CLUSTER_QUEUE_NAME)
 
 
 def get_scan_queue() -> Queue:
     return get_queue(RQ_SCAN_QUEUE_NAME)
+
+
+def get_image_queue() -> Queue:
+    return get_queue(RQ_IMAGE_QUEUE_NAME)
+
+
+def get_image_add_queue() -> Queue:
+    return get_queue(RQ_IMAGE_ADD_QUEUE_NAME)
 
 
 def failed_job_traceback(job_id: str, *, queue_name: str | None = None) -> str | None:
@@ -46,49 +60,38 @@ def failed_job_traceback(job_id: str, *, queue_name: str | None = None) -> str |
     return job.exc_info
 
 
-def iter_failed_jobs(queue_name: str | None = None, limit: int = 10) -> list[tuple[str, str | None]]:
+def iter_failed_jobs(
+    queue_name: str | None = None,
+    limit: int = 10,
+) -> list[tuple[str, str | None]]:
     """Return (job_id, traceback) pairs for failed jobs in a queue."""
     queue = get_queue(queue_name)
     job_ids = queue.failed_job_registry.get_job_ids(0, limit)
     return [(job_id, failed_job_traceback(job_id, queue_name=queue_name)) for job_id in job_ids]
 
 
-def enqueue_process_image(
+def enqueue_face_tool(
     image_path: Path,
-    tools: list[str],
+    tool: str,
     force: bool = False,
-) -> list[str]:
-    """Enqueue one RQ job per detection pipeline or analysis tool. Returns job ids."""
-    from meta_face.jobs import job_id_for_path, process_image
-    from meta_face.scanner import needs_processing, resolve_backend_job_groups
-
-    queue = get_queue()
-    job_ids: list[str] = []
-    detect_job = None
-    for backend_key, group_tools in resolve_backend_job_groups(tools):
-        if not force and not needs_processing(image_path, group_tools, force=False):
-            continue
-        enqueue_kwargs: dict[str, object] = {
-            "job_id": job_id_for_path(f"image-{backend_key}", image_path),
-            "failure_ttl": 86400,
-            "job_timeout": rq_job_timeout(backend_key),
-        }
-        if (
-            detect_job is not None
-            and set(group_tools) & CROP_ANALYSIS_TOOLS
-        ):
-            enqueue_kwargs["depends_on"] = detect_job
-        job = queue.enqueue(
-            process_image,
-            str(image_path),
-            group_tools,
-            force,
-            **enqueue_kwargs,
-        )
-        if backend_key == "insightface":
-            detect_job = job
-        job_ids.append(job.id)
-    return job_ids
+    depends_on: str | None = None,
+) -> str:
+    """Enqueue one face job for a single tool. Returns the job id."""
+    enqueue_kwargs: dict[str, object] = {
+        "job_id": job_id_for_path(f"image-{tool}", image_path),
+        "failure_ttl": 86400,
+        "job_timeout": rq_job_timeout(tool),
+    }
+    if depends_on is not None:
+        enqueue_kwargs["depends_on"] = depends_on
+    job = get_face_queue().enqueue(
+        "meta_face.jobs.process_image",
+        str(image_path),
+        [tool],
+        force,
+        **enqueue_kwargs,
+    )
+    return job.id
 
 
 def enqueue_cluster(
@@ -96,11 +99,8 @@ def enqueue_cluster(
     force: bool = False,
     embedding_tool: str = "arcface",
 ) -> str:
-    from meta_face.jobs import job_id_for_path, run_cluster
-
-    queue = get_cluster_queue()
-    job = queue.enqueue(
-        run_cluster,
+    job = get_cluster_queue().enqueue(
+        "meta_face.jobs.run_cluster",
         str(root),
         force,
         embedding_tool,
@@ -116,17 +116,48 @@ def enqueue_scan_path(
     force: bool = False,
     recursive: bool = True,
 ) -> str:
-    """Enqueue a per-directory scan job on the high-priority scan queue."""
-    from meta_face.jobs import job_id_for_path, scan_path
-
-    queue = get_scan_queue()
-    job = queue.enqueue(
-        scan_path,
+    """Enqueue a per-directory scan job on the scan queue."""
+    job = get_scan_queue().enqueue(
+        "meta_face.scan_jobs.scan_path",
         str(directory),
         tools,
         force,
         recursive,
         job_id=job_id_for_path("scan", directory),
+        failure_ttl=86400,
+    )
+    return job.id
+
+
+def enqueue_query_images(
+    directory: Path,
+    tools: list[str],
+    force: bool = False,
+) -> str:
+    """Enqueue a job that lists images in one directory and queues add-image jobs."""
+    job = get_image_queue().enqueue(
+        "meta_face.scan_jobs.query_images",
+        str(directory),
+        tools,
+        force,
+        job_id=job_id_for_path("images", directory),
+        failure_ttl=86400,
+    )
+    return job.id
+
+
+def enqueue_add_image(
+    image_path: Path,
+    tools: list[str],
+    force: bool = False,
+) -> str:
+    """Enqueue a job that fans one image out into individual face-tool jobs."""
+    job = get_image_add_queue().enqueue(
+        "meta_face.scan_jobs.add_image",
+        str(image_path),
+        tools,
+        force,
+        job_id=job_id_for_path("image-add", image_path),
         failure_ttl=86400,
     )
     return job.id
