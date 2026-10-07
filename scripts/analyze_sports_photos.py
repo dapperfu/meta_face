@@ -97,6 +97,10 @@ def persist(path, tool, payload, size):
 def direct_dlib(image):
     """Same HOG/68-point models without importing face_recognition's CUDA CNN."""
     import dlib
+
+    from meta_face.deps import ensure_pkg_resources
+
+    ensure_pkg_resources()
     import face_recognition_models
 
     if not hasattr(direct_dlib, "models"):
