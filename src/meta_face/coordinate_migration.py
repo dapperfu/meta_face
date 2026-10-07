@@ -9,7 +9,7 @@ import click
 from sidecar_rs import SidecarDocument
 
 from meta_face.coordinates import RELATIVE_UNITS, to_normalized
-from meta_face.sidecar import get_face_section, list_face_tools
+from meta_face.sidecar import get_face_section, list_face_tools, update_sidecar_path
 
 
 def migrate_document(doc: SidecarDocument, *, write: bool = False,
@@ -60,7 +60,7 @@ def normalize_coordinates(path: Path, write: bool, source_size: Any) -> None:
                 def patch(doc: SidecarDocument) -> None:
                     reports.append(migrate_document(doc, write=True, source_size=source_size))
 
-                SidecarDocument.update_path(scar, patch)
+                update_sidecar_path(scar, patch)
                 report = reports[0]
             else:
                 report = migrate_document(SidecarDocument.from_path(str(scar)), source_size=source_size)
