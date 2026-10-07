@@ -293,6 +293,66 @@ def benchmark_cmd(image_path: Path | None, warmup: int, iterations: int, **kwarg
     click.echo(result.report())
 
 
+@yolo.command("export")
+@click.option(
+    "--model",
+    type=click.Path(path_type=Path, dir_okay=False),
+    default=Path("models/yolov8n-face-lindevs.pt"),
+    show_default=True,
+)
+@click.option(
+    "--format",
+    "export_format",
+    type=click.Choice(["onnx"]),
+    default="onnx",
+    show_default=True,
+)
+@click.option("--size", "image_size", default=640, show_default=True, type=int)
+@click.option("--half", is_flag=True, help="FP16 export (requires CUDA).")
+@click.option("--dynamic", is_flag=True, help="Dynamic input shape.")
+@click.option("--validate/--no-validate", default=True, show_default=True)
+@click.option(
+    "--images",
+    "image_paths",
+    multiple=True,
+    type=click.Path(path_type=Path, dir_okay=False, exists=True),
+    help="Validation images (default: first 3 in test_images/).",
+)
+@click.option("-v", "--verbose", is_flag=True)
+@_handle_errors
+def export_cmd(
+    model: Path,
+    export_format: str,
+    image_size: int,
+    half: bool,
+    dynamic: bool,
+    validate: bool,
+    image_paths: tuple[Path, ...],
+    verbose: bool,
+) -> None:
+    """Export weights to ONNX and verify boxes match the PyTorch model."""
+    from meta_face.yolo_face.detector import FaceDetector
+    from meta_face.yolo_face.export import compare_detectors, export_onnx
+
+    _setup_logging(verbose)
+    onnx_path = export_onnx(model, image_size=image_size, half=half, dynamic=dynamic)
+    click.echo(f"Exported {onnx_path}")
+    if not validate:
+        return
+    images = list(image_paths) or sorted(Path("test_images").glob("*.jpg"))[:3]
+    if not images:
+        click.echo("No validation images found; skipping validation.")
+        return
+    device = "cuda" if half else "cpu"
+    reference = FaceDetector(model, device=device, image_size=image_size)
+    candidate = FaceDetector(onnx_path, device=device, image_size=image_size)
+    report = compare_detectors(reference, candidate, images)
+    click.echo(report.summary())
+    if not report.ok:
+        raise click.ClickException("ONNX output differs from the PyTorch model.")
+    click.echo("ONNX export matches PyTorch output.")
+
+
 def _run(
     frames: Any,
     detector: Any,
