@@ -70,14 +70,31 @@ def update_sidecar(
 ) -> Path:
     """Load latest sidecar under lock, apply patch, and atomically save."""
     media_path = media_path.resolve()
-    scar_path = sidecar_path_for_media(media_path)
 
     def _apply(doc: SidecarDocument) -> None:
         if sidecar_rs.MEDIA_BASENAME_KEY not in doc:
             doc.set_media_basename(media_path.name)
         patch(doc)
 
-    SidecarDocument.update_path(scar_path, _apply)
+    return update_sidecar_path(sidecar_path_for_media(media_path), _apply)
+
+
+def update_sidecar_path(
+    scar_path: Path,
+    patch: Callable[[SidecarDocument], None],
+    *,
+    lock_timeout_s: float | None = None,
+) -> Path:
+    """Read-modify-write one .scar file. The lock file exists only inside the edit block.
+
+    When `{path}.lock` stays held for the whole wait, sidecar-rs raises `LockTimeout`
+    (a lockfile timeout) and this function does not catch it.
+    """
+    scar_path.parent.mkdir(parents=True, exist_ok=True)
+    if lock_timeout_s is None:
+        lock_timeout_s = sidecar_rs.DEFAULT_LOCK_TIMEOUT_SECS
+    with SidecarDocument.edit(scar_path, lock_timeout_s=lock_timeout_s) as doc:
+        patch(doc)
     return scar_path
 
 
