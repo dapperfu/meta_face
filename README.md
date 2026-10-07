@@ -176,6 +176,7 @@ Useful commands:
 | `mf annotate PATH` | Draw boxes onto a copy of the photo |
 | `mf info PATH` | Print what is in the `.scar` file |
 | `mf download` | Download model files |
+| `mf clean-locks PATH` | Delete old `.scar.lock` files nobody is using |
 
 Default `mf scan` runs InsightFace and face_recognition. It does not group people until you cluster:
 
@@ -188,6 +189,8 @@ mf scan /photos --tools mediapipe
 ```
 
 `detect`, `analysis`, and `mediapipe` match the sports-review phases. Each analysis tool is its own Redis Queue job, writes its own sidecar section under the file lock, and has its own timeout (detection 10 minutes, ONNX analysis 15 minutes, MediaPipe 30 minutes; override with `META_FACE_DETECT_JOB_TIMEOUT`, `META_FACE_ANALYSIS_JOB_TIMEOUT`, `META_FACE_MEDIAPIPE_JOB_TIMEOUT`). Crop analysis jobs wait for SCRFD on that photo.
+
+A write opens `photo.scar.lock` inside a context and deletes that file when the context ends. If the lock is still held after the wait, sidecar-rs raises a lockfile timeout. That is a failure for a normal command. An RQ job catches it and goes back on its queue, up to 10 times (`META_FACE_SIDECAR_LOCK_MAX_REQUEUES`). `mf clean-locks PATH` deletes leftover lock files that nobody is holding.
 
 More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordinates](docs/COORDINATES.md).
 
@@ -365,6 +368,7 @@ mf scan /path/to/photos --run-now
 | `mf annotate PATH` | 在照片副本上画框 |
 | `mf info PATH` | 打印 `.scar` 文件里的内容 |
 | `mf download` | 下载模型文件 |
+| `mf clean-locks PATH` | 删除没人在用的旧 `.scar.lock` 锁文件 |
 
 默认的 `mf scan` 会运行 InsightFace 和 face_recognition。它不会自动把人分组。分组需要再运行 cluster：
 
