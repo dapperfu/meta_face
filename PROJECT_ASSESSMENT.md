@@ -8,16 +8,16 @@ This assessment distinguishes documented intent, implementation, observed histor
 
 **Intended goals**
 
-The central goal is to turn a directory of photographs into reusable face metadata: locate faces, calculate embeddings, group similar faces across photographs, and preserve the results beside the originals. The `.scar` documents are the source of truth; Redis coordinates work, and FAISS indexes are derived artifacts. The same sidecars can contain metadata from `meta_pose` and other photography tools.
+The central goal is to turn a directory of photographs into reusable face metadata: locate faces, calculate embeddings, group similar faces across photographs, and preserve the results beside the originals. The `.scar` documents are the source of truth; Redis coordinates work, and FAISS indexes are derived artifacts. The same sidecars can contain metadata from other photography tools.
 
-The original [pipeline plan](/projects/spring_photography/meta_face/plans/meta-face-pipeline.md:3) specified SCRFD detection, ArcFace embeddings, HDBSCAN clustering, GPU-host execution, and a runnable CLI/worker structure. Subsequent plans broadened this to dlib, annotation notebooks, collection statistics, and 17 optional facial-analysis adapters. A Detectron2 COCO person detector was later added and then removed; body detection belongs in meta_pose.
+The original [pipeline plan](/projects/spring_photography/meta_face/plans/meta-face-pipeline.md:3) specified SCRFD detection, ArcFace embeddings, HDBSCAN clustering, GPU-host execution, and a runnable CLI/worker structure. Subsequent plans broadened this to dlib, annotation notebooks, collection statistics, and 17 optional facial-analysis adapters. A Detectron2 COCO person detector was later added and then removed; body detection belongs in a separate project.
 
 The business purpose is inferred as making personal and sports photo collections easier to inspect and group by people. The implemented identity mechanism produces anonymous cluster labels. No person-name catalogue, reviewed identity management, image-search interface, or end-user photo application was found; those should not automatically be treated as unfinished requirements.
 
 | Goal | Inherited state | What would establish completion |
 |---|---|---|
 | Detect faces and compute embeddings | SCRFD/ArcFace and dlib pipelines are implemented. Existing sidecars demonstrate both ran. | A repeatable run on representative photos, verified face boxes, correct embedding dimensions, and consistent face-to-embedding alignment. |
-| Preserve interoperable metadata | Namespaced records, tool versions/timestamps, and locked sidecar updates are implemented. Face/pose merge tests pass when the sibling package is available. | Documented schema and dependency versions; tests for concurrent writes, incomplete records, model changes, and invalidation of dependent outputs. |
+| Preserve interoperable metadata | Namespaced records, tool versions/timestamps, and locked sidecar updates are implemented. Face/pose namespace merge tests pass. | Documented schema and dependency versions; tests for concurrent writes, incomplete records, model changes, and invalidation of dependent outputs. |
 | Process large collections and resume work | Recursive discovery, per-backend RQ jobs, multiple workers, inline execution, and skip markers exist. Error reporting and aggregate-job ordering have gaps. | Every discovered image is accounted for as successful, skipped, or failed; failures remain visible; aggregate work waits for all required image jobs. |
 | Group identities across a collection | Both embedding sources are supported. A saved ArcFace run contains 5,059 face references across 1,545 photos. | Reviewed cluster quality, collection/run identifiers, correct distinct-identity statistics, and indexes isolated by collection. |
 | Inspect results and coverage | Four annotation notebooks, five collection notebooks, crop helpers, and a statistics library exist. Most collection notebooks have no saved completed execution; statistics have correctness limitations. | Notebooks execute from a fresh kernel against a documented fixture and representative collection; totals and coverage reconcile with source records. |
@@ -36,7 +36,7 @@ Saved annotation notebook output also shows a historical inference run. These ar
 
 1. **The committed checkout is incomplete.** Before this assessment, there were 20 modified tracked files, 31 untracked files, and an additional dirty rules submodule. Untracked implementation includes `bbox.py`, `detectron2_model.py`, `tools/sidecar_encode.py`, the collection-analysis package, notebook helpers, and tests. Committed analysis code already imports some of these missing modules. Exporting `HEAD` to a temporary directory and importing `meta_face.tools.analysis.registry` fails with `ModuleNotFoundError: meta_face.tools.sidecar_encode`. A clean checkout therefore cannot reproduce the working tree. See [analysis base](/projects/spring_photography/meta_face/src/meta_face/tools/analysis/base.py:10) and [crop helpers](/projects/spring_photography/meta_face/src/meta_face/tools/analysis/crops.py:10).
 
-2. **~~Default Detectron2 results have the wrong meaning.~~ Resolved.** COCO RetinaNet person detection was removed from meta_face. Body/person detection belongs in meta_pose.
+2. **~~Default Detectron2 results have the wrong meaning.~~ Resolved.** COCO RetinaNet person detection was removed from meta_face. Body/person detection belongs in a separate project.
 
 3. **Inline scans can conceal failures.** `_scan_inline` submits directory tasks without retaining their futures or calling `result()`. An exception ends that directory task but is not propagated to the CLI. A temporary corrupt JPEG, with only dependency checks bypassed, produced exit status `0` and “Nothing to process.” Remaining images in that directory can also be abandoned after an error. See [inline scanning](/projects/spring_photography/meta_face/src/meta_face/cli.py:211).
 
@@ -54,7 +54,7 @@ The original plans say ArcFace-only embeddings and an InsightFace-only default, 
 
 Notebook `01` declares `FORCE_DETECT = False` but calls `resolve_face_records(..., force=True)`, overriding its documented sidecar-first behavior. Notebook `24` contains a saved `NameError`; its current source includes the named import, so the saved error alone does not prove the current notebook still fails from a fresh kernel. The other collection notebooks lack saved complete executions. Year aggregation recognizes only an immediate parent named `20XX`, which omits nested layouts such as `2026/05-May/photo.jpg`.
 
-No dependency lockfile, CI workflow, representative accuracy benchmark, or agreed quality/throughput target was found in the project. Dependencies include GPU packages and notebook packages in the base install. `meta_pose` is needed by integration tests but is not declared as a test dependency. The source distribution configuration also excludes the notebooks and tests described in the README.
+No dependency lockfile, CI workflow, representative accuracy benchmark, or agreed quality/throughput target was found in the project. Dependencies include GPU packages and notebook packages in the base install. The source distribution configuration also excludes the notebooks and tests described in the README.
 
 The clustering implementation creates a FAISS `IndexFlatIP` and separately feeds the full embedding matrix to HDBSCAN. It does not use FAISS to accelerate HDBSCAN or explicitly transfer the index to a GPU. Large-collection performance should therefore be measured rather than inferred from the GPU dependency list.
 
@@ -62,8 +62,7 @@ The clustering implementation creates a FAISS `IndexFlatIP` and separately feeds
 
 | Check | Result |
 |---|---|
-| Existing tests, excluding the stalled availability test | `87 passed, 3 failed, 1 deselected` in the inherited `venv_meta_face`; all three failures were missing `meta_pose`. |
-| The three sidecar merge tests with sibling `meta_pose/src` on `PYTHONPATH` | `3 passed`, including concurrent face/pose namespace writes. No dependency installation was required. |
+| Existing tests, excluding the stalled availability test | `87 passed, 3 failed, 1 deselected` in the inherited `venv_meta_face`; all three failures were the sidecar merge tests, which then depended on an uninstalled sibling package. They now write the pose namespace directly and pass. |
 | Full-suite attempt | Interrupted after progress stalled in the analysis-tool availability check. That test initializes optional model runtimes; its success is unverified. |
 | Ruff over `src`, `tests`, and `notebooks` | 21 findings in nine files: 14 import-placement findings, three unused locals, four unused imports. |
 | Package metadata consistency | `pip check` reported no broken requirements. A separate pandas import emitted a NumPy/numexpr binary-compatibility diagnostic, despite aggregate checks completing. |
@@ -76,10 +75,6 @@ The main test commands were:
 ```bash
 venv_meta_face/bin/python -m pytest -q -p no:cacheprovider \
   -k 'not test_tool_availability_returns_message_or_none'
-
-PYTHONPATH=/projects/spring_photography/meta_pose/src \
-  venv_meta_face/bin/python -m pytest -q -p no:cacheprovider \
-  tests/test_sidecar_merge.py
 
 venv_meta_face/bin/ruff check src tests notebooks
 ```

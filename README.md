@@ -131,7 +131,7 @@ These tools usually look at the cut-out face after SCRFD finds it. Some big kits
 
 | Tool | Job in plain words |
 |------|--------------------|
-| [sidecar-rs](https://github.com/dapperfu/sidecar-rs) | Write and update `.scar` files next to each photo. Another project ([meta_pose](../meta_pose)) can write pose and body notes into the same file. |
+| [sidecar-rs](https://github.com/dapperfu/sidecar-rs) | Write and update `.scar` files next to each photo. Other tools can write their own notes into the same file. |
 
 You can list what is installed on your machine:
 
@@ -405,7 +405,7 @@ python scripts/generate_readme_examples.py
 
 | 工具 | 用白话说 |
 |------|----------|
-| sidecar-rs | 在每张照片旁边写入和更新 `.scar` 文件。另一个项目（meta_pose）可以把姿势和人体信息写进同一个文件。 |
+| sidecar-rs | 在每张照片旁边写入和更新 `.scar` 文件。其他工具也可以把自己的信息写进同一个文件。 |
 
 查看你这台电脑上装了哪些工具：
 

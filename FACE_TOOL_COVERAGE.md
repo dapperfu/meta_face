@@ -2,7 +2,7 @@
 
 Assessment date: 2026-09-02. This describes the inherited implementation, local stored results, upstream capabilities, and the changes made during this review. It complements [the project assessment](PROJECT_ASSESSMENT.md).
 
-**Finding:** the inherited project had two face-detection paths, two embedding paths and a COCO person detector. The person detector has been removed from meta_face (body detection belongs in meta_pose). Seventeen analysis adapters did not constitute seventeen independent face recognizers. DeepFace, UniFace and Py-Feat exposed only small, sometimes incompatible portions of their SDKs. Their public APIs and photo adapters have now been expanded; detection accuracy and collection-level identity quality remain unmeasured.
+**Finding:** the inherited project had two face-detection paths, two embedding paths and a COCO person detector. The person detector has been removed from meta_face (body detection belongs in a separate project). Seventeen analysis adapters did not constitute seventeen independent face recognizers. DeepFace, UniFace and Py-Feat exposed only small, sometimes incompatible portions of their SDKs. Their public APIs and photo adapters have now been expanded; detection accuracy and collection-level identity quality remain unmeasured.
 
 ## Core tools
 
@@ -63,8 +63,7 @@ The following separates upstream capability from the inherited adapter's impleme
 
 Static inspection of the cached ONNX graphs confirmed the relevant output shapes. Small synthetic-output checks reproduced the OpenCV class-order, gaze-head and BiSeNet decoding errors; those checks validate integration semantics, not model accuracy.
 
-Implementation validation: 130 `meta_face` tests and 34 companion `meta_pose` tests passed, including normalized coordinate persistence, boundary clamping, anisotropic resizing, legacy migrations, all SDK photo-head contracts and namespace preservation. Two face tests are excluded from the passing run: the optional all-tool availability probe stalls during MediaPipe/PortAudio initialization, and the existing threaded sidecar-lock test intermittently stalls inside `SidecarDocument.update_path` (it passed in an earlier isolated run). The pose cross-process merge test passes. The pose backend imports MediaPipe only when needed, so metadata reading and migration work independently.
-
+Implementation validation: 130 `meta_face` tests passed, including normalized coordinate persistence, boundary clamping, anisotropic resizing, legacy migrations, all SDK photo-head contracts and namespace preservation. Two face tests are excluded from the passing run: the optional all-tool availability probe stalls during MediaPipe/PortAudio initialization, and the existing threaded sidecar-lock test intermittently stalls inside `SidecarDocument.update_path` (it passed in an earlier isolated run).
 ## Coverage gaps that remain after the requested changes
 
 1. **Small, distant and difficult faces.** Evaluate resolution/tiling, profiles, occlusion, motion blur, backlighting, hats and partially visible faces. More SDK choices provide candidates; they do not establish recall.

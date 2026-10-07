@@ -36,7 +36,7 @@ DeepFace aligned-crop subresults use `space: "aligned_crop"` and clamped normali
 
 Inference uses pixels. `write_tool_result` converts geometry at persistence using job-supplied image dimensions; pixel geometry without dimensions is rejected before any write. The annotation reader, crop extractor and directory review notebook resolve positions against the current image size. Raw `get_face_section` returns stored values; geometry consumers can use `section_records_in_pixels` or `record_to_pixels` from `meta_face.coordinates`. `to_normalized` converts pixel or legacy relative payloads and clamps existing normalized payloads as well.
 
-The companion `meta_pose` project applies the same convention to canonical keypoints, native image landmarks and boxes. `read_pose_result` returns pixels for the current image by default (`as_pixels=False` exposes stored fractions), and `draw_pose` handles either representation. Native depth retains its original units. Face writers preserve `pose.*`, and pose writers preserve `face.*`. A copy of the companion implementation is recorded in `research/meta_pose_coordinates.patch`.
+Face writers preserve other tools' namespaces (such as `pose.*`) in the same sidecar.
 
 ## Existing sidecars
 

@@ -1,6 +1,6 @@
 # Add Detectron2 Backend Support
 
-**Superseded.** COCO RetinaNet person/body detection does not belong in meta_face. Body detection should live in [meta_pose](../../meta_pose). This plan is kept as history of an abandoned face-detector extra.
+**Superseded.** COCO RetinaNet person/body detection does not belong in meta_face. Body detection should live in a separate project. This plan is kept as history of an abandoned face-detector extra.
 
 ## Assumptions
 

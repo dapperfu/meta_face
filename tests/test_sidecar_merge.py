@@ -1,4 +1,4 @@
-"""Tests for locked sidecar merge across face and pose namespaces."""
+"""Tests that face writes preserve another tool's namespace (``pose.*``) in the same sidecar."""
 
 from __future__ import annotations
 
@@ -23,9 +23,11 @@ def _pose_result() -> dict:
 
 
 def _write_pose(image: Path, tool: str = "yolo") -> None:
-    from meta_pose.sidecar_io import write_pose_result
+    def apply(doc: SidecarDocument) -> None:
+        for field, value in _pose_result().items():
+            doc.set(f"pose.{tool}.{field}", value)
 
-    write_pose_result(image, tool, _pose_result())
+    SidecarDocument.update_path(image.with_suffix(".scar"), apply)
 
 
 def test_write_preserves_pose_namespace(tmp_path: Path) -> None:
