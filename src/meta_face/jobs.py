@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
+import functools
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import cv2
+from rq import Retry, get_current_job
+from sidecar_rs import LockTimeout
 
-from meta_face.config import ANALYSIS_TOOLS, CROP_ANALYSIS_TOOLS
+from meta_face.config import ANALYSIS_TOOLS, CROP_ANALYSIS_TOOLS, SIDECAR_LOCK_MAX_REQUEUES
 from meta_face.deps import (
     require_cluster_runtime,
     require_dlib_runtime,
@@ -28,6 +31,25 @@ from meta_face.sidecar import (
 from meta_face.tools.registry import expand_dependencies
 
 logger = logging.getLogger(__name__)
+
+
+def _requeue_on_lockfile_timeout(
+    job_func: Callable[..., dict[str, Any]],
+) -> Callable[..., dict[str, Any] | Retry]:
+    """Requeue an RQ job on lockfile timeout. Outside RQ the same error is a failure."""
+
+    @functools.wraps(job_func)
+    def run(*args: Any, **kwargs: Any) -> dict[str, Any] | Retry:
+        try:
+            return job_func(*args, **kwargs)
+        except LockTimeout as exc:
+            job = get_current_job()
+            if job is None or (job.number_of_retries or 0) >= SIDECAR_LOCK_MAX_REQUEUES:
+                raise
+            logger.warning("lockfile timeout (%s); putting job %s back on its queue", exc, job.id)
+            return Retry(max=SIDECAR_LOCK_MAX_REQUEUES)
+
+    return run
 
 
 def _tools_to_run(doc: object, tools: list[str], force: bool) -> list[str]:
@@ -50,6 +72,7 @@ def _write_tool_payload(
     return update_sidecar(media_path, _patch)
 
 
+@_requeue_on_lockfile_timeout
 def process_image(image_path: str, tools: list[str], force: bool = False) -> dict[str, Any]:
     """RQ job: run selected per-image face tools and write sidecar data."""
     per_image_tools = expand_dependencies(tools)
@@ -165,6 +188,7 @@ def process_image(image_path: str, tools: list[str], force: bool = False) -> dic
     }
 
 
+@_requeue_on_lockfile_timeout
 def run_cluster(
     root_path: str,
     force: bool = False,
@@ -181,44 +205,3 @@ def run_cluster(
     result["root"] = str(root)
     result["embedding_tool"] = emb_tool
     return result
-
-
-def scan_path(
-    directory: str,
-    tools: list[str],
-    force: bool = False,
-    recursive: bool = True,
-) -> dict[str, Any]:
-    """RQ job: scan one directory, enqueue child scans then image jobs."""
-    from meta_face.queue import enqueue_process_image, enqueue_scan_path
-    from meta_face.scanner import resolve_per_image_tools, scan_directory_level
-
-    dir_path = Path(directory).resolve()
-    per_image_tools = resolve_per_image_tools(tools)
-    stats, to_enqueue, subdirs = scan_directory_level(dir_path, tools, force=force)
-
-    # Fan out to child directories first (high-priority scan queue).
-    if recursive and subdirs:
-        for subdir in subdirs:
-            enqueue_scan_path(subdir, tools, force=force, recursive=recursive)
-
-    backend_jobs = 0
-    for image_path in to_enqueue:
-        backend_jobs += len(
-            enqueue_process_image(image_path, per_image_tools, force=force)
-        )
-
-    return {
-        "status": "ok",
-        "path": str(dir_path),
-        "discovered": stats.discovered,
-        "enqueued": stats.enqueued,
-        "backend_jobs": backend_jobs,
-        "skipped": stats.skipped,
-        "subdirs": len(subdirs),
-    }
-
-
-def job_id_for_path(prefix: str, path: Path) -> str:
-    digest = hashlib.sha256(str(path.resolve()).encode()).hexdigest()[:24]
-    return f"{prefix}-{digest}"
