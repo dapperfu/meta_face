@@ -264,6 +264,35 @@ def video_cmd(
         click.echo(f"Wrote {output}")
 
 
+@yolo.command("benchmark")
+@model_options
+@click.option(
+    "--image",
+    "image_path",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Benchmark frame (default: synthetic 1280x720 noise).",
+)
+@click.option("--warmup", default=10, show_default=True, type=click.IntRange(min=0))
+@click.option("--iterations", default=100, show_default=True, type=click.IntRange(min=1))
+@_handle_errors
+def benchmark_cmd(image_path: Path | None, warmup: int, iterations: int, **kwargs: Any) -> None:
+    """Measure model load time and inference latency."""
+    import numpy as np
+
+    from meta_face.yolo_face.benchmark import run_benchmark
+    from meta_face.yolo_face.sources import load_image
+
+    config = _build_config(kwargs)
+    if image_path is not None:
+        frame = load_image(image_path)
+    else:
+        frame = np.random.default_rng(0).integers(0, 256, (720, 1280, 3), dtype=np.uint8)
+    result = run_benchmark(
+        lambda: _make_detector(config), frame, warmup=warmup, iterations=iterations
+    )
+    click.echo(result.report())
+
+
 def _run(
     frames: Any,
     detector: Any,
