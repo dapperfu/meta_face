@@ -8,9 +8,51 @@ import sys
 
 from rq import SimpleWorker
 
-from meta_face.config import RQ_CLUSTER_QUEUE_NAME, RQ_QUEUE_NAME, RQ_SCAN_QUEUE_NAME
-from meta_face.deps import PipelineDependencyError, require_cluster_runtime, require_inference_runtime
+from meta_face.config import (
+    RQ_CLUSTER_QUEUE_NAME,
+    RQ_IMAGE_ADD_QUEUE_NAME,
+    RQ_IMAGE_QUEUE_NAME,
+    RQ_QUEUE_NAME,
+    RQ_SCAN_QUEUE_NAME,
+)
+from meta_face.deps import (
+    PipelineDependencyError,
+    require_cluster_runtime,
+    require_inference_runtime,
+)
 from meta_face.queue import get_redis
+
+# Stage name -> Redis queue. Face work shares one queue; each tool is still its own job.
+WORKER_STAGES: dict[str, str] = {
+    "scan": RQ_SCAN_QUEUE_NAME,
+    "images": RQ_IMAGE_QUEUE_NAME,
+    "image-add": RQ_IMAGE_ADD_QUEUE_NAME,
+    "face": RQ_QUEUE_NAME,
+    "cluster": RQ_CLUSTER_QUEUE_NAME,
+}
+DEFAULT_WORKER_STAGES: tuple[str, ...] = ("scan", "images", "image-add", "face", "cluster")
+
+
+def resolve_worker_queues(stages: list[str]) -> list[str]:
+    """Map stage names to Redis queue names, preserving order."""
+    names: list[str] = []
+    unknown: list[str] = []
+    for stage in stages:
+        key = stage.strip().lower()
+        if not key:
+            continue
+        queue_name = WORKER_STAGES.get(key)
+        if queue_name is None:
+            unknown.append(stage.strip())
+            continue
+        if queue_name not in names:
+            names.append(queue_name)
+    if unknown:
+        valid = ", ".join(WORKER_STAGES)
+        raise ValueError(f"Unknown worker queues: {', '.join(unknown)}. Valid: {valid}")
+    if not names:
+        raise ValueError("Select at least one worker queue.")
+    return names
 
 
 def _validate_worker_deps(queue_names: list[str]) -> None:
@@ -34,11 +76,14 @@ def _worker_main(queue_names: list[str]) -> None:
     worker.work(with_scheduler=False)
 
 
-def start_workers(workers: int = 1, *, cluster: bool = False) -> None:
-    """Start one or more RQ workers (multiprocessing when workers > 1)."""
-    queue_names = [RQ_SCAN_QUEUE_NAME, RQ_QUEUE_NAME]
-    if cluster:
-        queue_names.append(RQ_CLUSTER_QUEUE_NAME)
+def start_workers(workers: int = 1, *, queues: list[str] | None = None) -> None:
+    """Start one or more RQ workers.
+
+    `queues` is a list of stage names (scan, images, image-add, face, cluster).
+    The default listens on every stage.
+    """
+    selected = list(queues) if queues is not None else list(DEFAULT_WORKER_STAGES)
+    queue_names = resolve_worker_queues(selected)
 
     if workers <= 1:
         _worker_main(queue_names)
