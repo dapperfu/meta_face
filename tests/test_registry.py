@@ -49,7 +49,7 @@ def test_sports_phase_meta_tools_expand() -> None:
     assert "opencv_fer" in combined
     groups = resolve_backend_job_groups(resolve_per_image_tools(combined))
     keys = [key for key, _ in groups]
-    assert keys[0] == "insightface"
+    assert keys[0] == "scrfd"
     assert keys[1:] == [
         "opencv_fer",
         "fer_plus",
@@ -81,18 +81,22 @@ def test_resolve_backend_job_groups_splits_default_tools() -> None:
     per_image = resolve_per_image_tools(validate_tools(list(DEFAULT_SCAN_META_TOOLS)))
     groups = resolve_backend_job_groups(per_image)
     assert [key for key, _ in groups] == [
-        "insightface",
-        "face_recognition",
+        "scrfd",
+        "arcface",
+        "dlib_detect",
+        "dlib_embed",
     ]
-    assert groups[0][1] == ["scrfd", "arcface"]
-    assert groups[1][1] == ["dlib_detect", "dlib_embed"]
+    assert groups[0][1] == ["scrfd"]
+    assert groups[1][1] == ["arcface"]
+    assert groups[2][1] == ["dlib_detect"]
+    assert groups[3][1] == ["dlib_embed"]
 
 
 def test_resolve_backend_job_groups_includes_analysis() -> None:
     per_image = resolve_per_image_tools(validate_tools(["expression"]))
     groups = resolve_backend_job_groups(per_image)
     keys = [key for key, _ in groups]
-    assert "insightface" in keys
+    assert keys[0] == "scrfd"
     assert "opencv_fer" in keys
     assert "mediapipe_blendshapes" in keys
     assert "analysis" not in keys
@@ -102,4 +106,7 @@ def test_resolve_backend_job_groups_includes_analysis() -> None:
 
 def test_resolve_backend_job_groups_single_backend() -> None:
     groups = resolve_backend_job_groups(["dlib_detect", "dlib_embed"])
-    assert groups == [("face_recognition", ["dlib_detect", "dlib_embed"])]
+    assert groups == [
+        ("dlib_detect", ["dlib_detect"]),
+        ("dlib_embed", ["dlib_embed"]),
+    ]

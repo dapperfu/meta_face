@@ -7,9 +7,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from meta_face.config import (
-    AGGREGATE_TOOLS, ANALYSIS_TOOLS, CROP_ANALYSIS_TOOLS, DEFAULT_TOOLS, PER_IMAGE_TOOLS,
+    AGGREGATE_TOOLS,
+    ANALYSIS_TOOLS,
+    CROP_ANALYSIS_TOOLS,
+    DEFAULT_TOOLS,
+    IMAGE_EXTENSIONS,
+    PER_IMAGE_TOOLS,
 )
-from meta_face.imaging import is_image_path
 from meta_face.sidecar import load_or_create, tool_is_current
 
 logger = logging.getLogger(__name__)
@@ -36,28 +40,23 @@ def normalize_tools(tools: list[str]) -> list[str]:
     return normalized
 
 
-# Detection pipelines stay bundled (one detector pass). Each analysis tool
-# is its own RQ job so MediaPipe, ONNX heads, and detection write independently.
-DETECTION_JOB_GROUPS: tuple[tuple[str, frozenset[str]], ...] = (
-    ("insightface", frozenset({"scrfd", "arcface"})),
-    ("face_recognition", frozenset({"dlib_detect", "dlib_embed"})),
-)
-BACKEND_JOB_GROUPS = DETECTION_JOB_GROUPS
+def _is_image_path(path: Path) -> bool:
+    """Extension check without importing OpenCV."""
+    return path.suffix.lower() in IMAGE_EXTENSIONS
+
+
+def resolve_image_tasks(per_image_tools: list[str]) -> list[str]:
+    """One task name per tool, in request order. Detection tools are not bundled."""
+    tasks: list[str] = []
+    for tool in per_image_tools:
+        if tool and tool not in tasks:
+            tasks.append(tool)
+    return tasks
 
 
 def resolve_backend_job_groups(per_image_tools: list[str]) -> list[tuple[str, list[str]]]:
-    """Split per-image tools into one RQ job per detection pipeline or analysis tool."""
-    groups: list[tuple[str, list[str]]] = []
-    claimed: set[str] = set()
-    for backend_key, members in DETECTION_JOB_GROUPS:
-        group_tools = [tool for tool in per_image_tools if tool in members]
-        if group_tools:
-            groups.append((backend_key, group_tools))
-            claimed.update(group_tools)
-    for tool in per_image_tools:
-        if tool in ANALYSIS_TOOLS and tool not in claimed:
-            groups.append((tool, [tool]))
-    return groups
+    """One RQ job per tool. Each job's tool list contains only that tool."""
+    return [(tool, [tool]) for tool in resolve_image_tasks(per_image_tools)]
 
 
 def resolve_per_image_tools(tools: list[str]) -> list[str]:
@@ -116,23 +115,24 @@ def scan_directory_level(
     force: bool = False,
 ) -> tuple[ScanStats, list[Path], list[Path]]:
     """
-    Scan a single directory level (or a single file path).
+    List one directory level (or a single file path).
 
-    Returns (stats, paths_to_enqueue, subdirs).
+    Does not read sidecars. `force` is accepted so callers can pass the scan
+    flag through; freshness is decided later by add_image.
+    Returns (stats, image_paths, subdirs).
     """
+    del force
     per_image_tools = resolve_per_image_tools(tools)
     stats = ScanStats()
     to_enqueue: list[Path] = []
     subdirs: list[Path] = []
 
     if root.is_file():
-        if is_image_path(root):
+        if _is_image_path(root):
             stats.discovered += 1
-            if per_image_tools and needs_processing(root, per_image_tools, force):
+            if per_image_tools:
                 to_enqueue.append(root)
                 stats.enqueued += 1
-            elif per_image_tools:
-                stats.skipped += 1
         return stats, to_enqueue, subdirs
 
     if not root.is_dir():
@@ -145,15 +145,12 @@ def scan_directory_level(
         return stats, to_enqueue, subdirs
 
     for entry in sorted(entries):
-        if entry.is_file() and is_image_path(entry):
+        if entry.is_file() and _is_image_path(entry):
             stats.discovered += 1
             if not per_image_tools:
                 continue
-            if needs_processing(entry, per_image_tools, force):
-                to_enqueue.append(entry)
-                stats.enqueued += 1
-            else:
-                stats.skipped += 1
+            to_enqueue.append(entry)
+            stats.enqueued += 1
         elif entry.is_dir():
             subdirs.append(entry)
 
