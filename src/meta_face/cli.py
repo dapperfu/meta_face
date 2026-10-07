@@ -345,6 +345,22 @@ def tools_cmd() -> None:
         click.echo(f"  {group}: {', '.join(members)}")
 
 
+def _yolo_variants(choice: str) -> list[str]:
+    from meta_face.yolo_face.weights import YOLO_FACE_VARIANTS
+
+    key = choice.lower()
+    return list(YOLO_FACE_VARIANTS) if key == "all" else [key]
+
+
+def _download_yolo(variants: list[str], *, force: bool) -> dict[str, Path]:
+    from meta_face.config import YOLO_FACE_MODEL_DIR
+    from meta_face.yolo_face.weights import download_yolo_weights
+
+    return {
+        v: download_yolo_weights(v, force=force, model_dir=YOLO_FACE_MODEL_DIR) for v in variants
+    }
+
+
 @main.command("download")
 @click.option(
     "--backend",
@@ -360,6 +376,7 @@ def tools_cmd() -> None:
             "yakhyo_gaze",
             "face_antispoof_onnx",
             "analysis",
+            "yolo",
             "all",
         ],
         case_sensitive=False,
@@ -369,13 +386,20 @@ def tools_cmd() -> None:
     help="Which backend model weights to download or verify.",
 )
 @click.option(
+    "--yolo-variant",
+    type=click.Choice(["n", "s", "m", "l", "x", "all"], case_sensitive=False),
+    default="n",
+    show_default=True,
+    help="YOLOv8-Face size for --backend yolo (nano..xlarge, or all).",
+)
+@click.option(
     "--model",
     default=INSIGHTFACE_MODEL,
     show_default=True,
     help="insightface model pack to download (SCRFD + ArcFace).",
 )
 @click.option("--force", is_flag=True, help="Re-download even if the model pack is present.")
-def download(backend: str, model: str, force: bool) -> None:
+def download(backend: str, model: str, yolo_variant: str, force: bool) -> None:
     """Download face model weights ahead of running detection/embedding."""
     from meta_face.models import download as download_insightface
     from meta_face.models import (
@@ -387,6 +411,16 @@ def download(backend: str, model: str, force: bool) -> None:
     from meta_face.models import model_dir
 
     key = backend.lower()
+    if key == "yolo":
+        variants = _yolo_variants(yolo_variant)
+        try:
+            for variant, path in _download_yolo(variants, force=force).items():
+                click.echo(f"YOLOv8{variant}-Face weights ready at {path}")
+        except OSError as exc:
+            click.echo(click.style(f"YOLO weight download failed: {exc}", fg="red"), err=True)
+            raise SystemExit(1) from exc
+        return
+
     if key in {"analysis", "opencv_fer", "fer_plus", "mediapipe", "fairface", "bisenet", "yakhyo_gaze", "face_antispoof_onnx"}:
         from meta_face.analysis_models import download_all_analysis_models, download_analysis_model
 
@@ -426,6 +460,13 @@ def download(backend: str, model: str, force: bool) -> None:
             for name, path in exc.paths.items():
                 click.echo(f"  analysis/{name}: {path}")
             click.echo(click.style(f"Some analysis models failed: {exc}", fg="yellow"), err=True)
+        try:
+            for path in _download_yolo(["n"], force=force).values():
+                click.echo(f"  yolo/{path.name}: {path}")
+        except OSError as exc:
+            click.echo(
+                click.style(f"YOLO weight download failed: {exc}", fg="yellow"), err=True
+            )
         return
 
     if key == "dlib":

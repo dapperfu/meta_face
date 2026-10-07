@@ -64,6 +64,10 @@ attributes = [
 liveness = [
     "onnxruntime-gpu>=1.17",
 ]
+yolo = [
+    "ultralytics>=8.3",
+    "tomli>=2.0; python_version < '3.11'",
+]
 all-tools = [
     "meta-face[sdk-tools]",
     "emotiefflib>=1.1.1",

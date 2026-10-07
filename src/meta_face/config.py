@@ -151,6 +151,9 @@ DATA_DIR: Path = Path(os.environ.get("META_FACE_DATA", Path.home() / ".meta_face
 FAISS_INDEX_PATH: Path = DATA_DIR / "faces.arcface.faiss"
 FAISS_META_PATH: Path = DATA_DIR / "faces.arcface.faiss.meta"
 
+# YOLOv8-Face weights directory (relative paths resolve against the working directory).
+YOLO_FACE_MODEL_DIR: Path = Path(os.environ.get("META_FACE_YOLO_MODEL_DIR", "models"))
+
 # Supported image extensions (lowercase, with leading dot).
 IMAGE_EXTENSIONS: frozenset[str] = frozenset(
     {

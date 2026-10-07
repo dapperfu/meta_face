@@ -1,0 +1,28 @@
+# Default settings for `mf yolo ...`. CLI options override these values.
+
+[model]
+path = "models/yolov8n-face-lindevs.pt"
+confidence = 0.40
+iou = 0.45
+image_size = 640
+device = "auto"
+half = false
+
+[display]
+draw_boxes = true
+show_confidence = true
+show_center = false
+show_fps = true
+
+[camera]
+index = 0
+width = 1280
+height = 720
+fps = 30
+
+[performance]
+frame_skip = 0
+
+[filters]
+min_face_width = 0
+min_face_height = 0

@@ -58,6 +58,10 @@ data/
 *.scar.lock
 *.scar.tmp.*
 
+# YOLO face weights
+models/*.pt
+models/*.onnx
+
 # insightface model cache
 .insightface/
 

@@ -52,6 +52,16 @@ def require_insightface_runtime() -> None:
         ) from None
 
 
+def require_yolo_runtime() -> None:
+    """Ensure ultralytics is importable before running the YOLO face detector."""
+    try:
+        import ultralytics  # noqa: F401
+    except ImportError:
+        raise PipelineDependencyError(
+            "ultralytics is not installed. Install the YOLO extra: uv pip install -e '.[yolo]'"
+        ) from None
+
+
 def ensure_pkg_resources() -> None:
     """Provide pkg_resources.resource_filename when setuptools no longer ships it.
 
