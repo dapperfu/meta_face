@@ -1,0 +1,9 @@
+Collecting onnxruntime-gpu
+  Using cached onnxruntime_gpu-1.30.0-cp312-cp312-manylinux_2_28_x86_64.whl.metadata (6.0 kB)
+Requirement already satisfied: flatbuffers in /tun/projects/venv_projects/lib/python3.12/site-packages (from onnxruntime-gpu) (25.12.19)
+Requirement already satisfied: numpy>=1.21.6 in /tun/projects/venv_projects/lib/python3.12/site-packages (from onnxruntime-gpu) (2.5.3)
+Requirement already satisfied: packaging in /tun/projects/venv_projects/lib/python3.12/site-packages (from onnxruntime-gpu) (26.3)
+Requirement already satisfied: protobuf>=4.25.8 in /tun/projects/venv_projects/lib/python3.12/site-packages (from onnxruntime-gpu) (7.36.2)
+Using cached onnxruntime_gpu-1.30.0-cp312-cp312-manylinux_2_28_x86_64.whl (246.7 MB)
+Installing collected packages: onnxruntime-gpu
+Successfully installed onnxruntime-gpu-1.30.0
