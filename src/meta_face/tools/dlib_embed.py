@@ -26,6 +26,10 @@ def embeddings_from_faces(
         return []
 
     import dlib
+
+    from meta_face.deps import ensure_pkg_resources
+
+    ensure_pkg_resources()
     import face_recognition_models
 
     predictor = dlib.shape_predictor(face_recognition_models.pose_predictor_model_location())
