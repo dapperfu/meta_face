@@ -61,7 +61,7 @@ def is_dlib_available() -> bool:
     except ImportError:
         return False
 
-    pkg_dir = Path(face_recognition_models.__path__[0])
+    pkg_dir = Path(face_recognition_models.__path__[0]) / "models"
     required = (
         "shape_predictor_68_face_landmarks.dat",
         "dlib_face_recognition_resnet_model_v1.dat",
@@ -85,7 +85,7 @@ def download_dlib_models(*, force: bool = False) -> Path:
     dest = dlib_model_dir()
     if force or not dest.is_dir() or not any(dest.glob("*.dat")):
         dest.mkdir(parents=True, exist_ok=True)
-        pkg_dir = Path(face_recognition_models.__path__[0])
+        pkg_dir = Path(face_recognition_models.__path__[0]) / "models"
         for dat_file in pkg_dir.glob("*.dat"):
             link = dest / dat_file.name
             if link.exists() and not force:
