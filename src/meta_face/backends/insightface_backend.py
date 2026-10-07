@@ -18,7 +18,7 @@ class InsightFaceBackend(FaceDetectionBackend):
     def available(self) -> bool:
         try:
             import insightface  # noqa: F401
-            import onnxruntime  # noqa: F401
+            import onnxruntime
 
             return hasattr(onnxruntime, "InferenceSession")
         except (ImportError, AttributeError):

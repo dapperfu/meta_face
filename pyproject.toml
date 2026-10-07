@@ -96,6 +96,9 @@ packages = ["src/meta_face"]
 [tool.hatch.build.targets.sdist]
 only-include = ["src/meta_face", "README.md", "pyproject.toml"]
 
+[tool.pytest.ini_options]
+markers = ["integration: needs real model weights (skipped when absent)"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"

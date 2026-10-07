@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from meta_face.backends.base import FaceDetectionBackend
 from meta_face.backends.insightface_backend import InsightFaceBackend
+from meta_face.backends.yolo_backend import YoloFaceBackend
 
 _BACKENDS: dict[str, FaceDetectionBackend] = {
     "scrfd": InsightFaceBackend(),
+    "yolo": YoloFaceBackend(),
 }
 
 DETECTION_BACKEND_NAMES: frozenset[str] = frozenset(_BACKENDS.keys())
