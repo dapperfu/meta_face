@@ -118,11 +118,20 @@ REDIS_URL: str = os.environ.get(
 )
 RQ_QUEUE_NAME: str = os.environ.get("META_FACE_QUEUE", "meta-face")
 RQ_SCAN_QUEUE_NAME: str = os.environ.get("META_FACE_SCAN_QUEUE", "meta-face-scan")
+RQ_IMAGE_QUEUE_NAME: str = os.environ.get("META_FACE_IMAGE_QUEUE", "meta-face-images")
+RQ_IMAGE_ADD_QUEUE_NAME: str = os.environ.get(
+    "META_FACE_IMAGE_ADD_QUEUE",
+    "meta-face-image-add",
+)
 RQ_CLUSTER_QUEUE_NAME: str = os.environ.get("META_FACE_CLUSTER_QUEUE", "meta-face-cluster")
 RQ_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_JOB_TIMEOUT", "3600"))
 RQ_DETECT_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_DETECT_JOB_TIMEOUT", "600"))
 RQ_ANALYSIS_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_ANALYSIS_JOB_TIMEOUT", "900"))
 RQ_MEDIAPIPE_JOB_TIMEOUT: int = int(os.environ.get("META_FACE_MEDIAPIPE_JOB_TIMEOUT", "1800"))
+
+# An RQ job that hits a sidecar lockfile timeout goes back on its queue this many times.
+# The same timeout is a failure for every caller that is not an RQ job.
+SIDECAR_LOCK_MAX_REQUEUES: int = int(os.environ.get("META_FACE_SIDECAR_LOCK_MAX_REQUEUES", "10"))
 
 
 def rq_job_timeout(backend_key: str) -> int:
