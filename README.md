@@ -176,6 +176,7 @@ Useful commands:
 | `mf annotate PATH` | Draw boxes onto a copy of the photo |
 | `mf info PATH` | Print what is in the `.scar` file |
 | `mf download` | Download model files |
+| `mf yolo ...` | Fast face boxes only, from a photo, video, or camera (see below) |
 | `mf clean-locks PATH` | Delete old `.scar.lock` files nobody is using |
 
 Default `mf scan` runs InsightFace and face_recognition. It does not group people until you cluster:
@@ -193,6 +194,85 @@ mf scan /photos --tools mediapipe
 A write opens `photo.scar.lock` inside a context and deletes that file when the context ends. If the lock is still held after the wait, sidecar-rs raises a lockfile timeout. That is a failure for a normal command. An RQ job catches it and goes back on its queue, up to 10 times (`META_FACE_SIDECAR_LOCK_MAX_REQUEUES`). `mf clean-locks PATH` deletes leftover lock files that nobody is holding.
 
 More detail: [notebooks/](notebooks/), [SDK tools](docs/SDK_TOOLS.md), [coordinates](docs/COORDINATES.md).
+
+---
+
+## YOLO face detection (boxes only)
+
+`mf yolo` is a small, separate face finder built on YOLOv8-Face. It only says where faces are and how sure it is. It does not recognize people, make fingerprints, or write `.scar` files. Everything runs on your machine; no frame or face crop is uploaded or saved unless you ask for an output file.
+
+### Install
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+uv pip install -e ".[yolo]"     # or: pip install -e ".[yolo]"
+mf download --backend yolo      # puts models/yolov8n-face-lindevs.pt in place
+```
+
+`mf download` (all backends) also fetches the nano weights. Pick a bigger model with `--yolo-variant s|m|l|x|all`. Set `META_FACE_YOLO_MODEL_DIR` to keep weights somewhere other than `models/`.
+
+Ultralytics installs `opencv-python` (with windows). This project's base install uses `opencv-python-headless`. Keep only one: on a server with no screen, run `pip uninstall -y opencv-python` and reinstall `opencv-python-headless`. Without the windowed build, `--show` and the live camera window will not work; use `--headless` / `--output` instead.
+
+### Run it
+
+```bash
+mf yolo image test.jpg --show
+mf yolo image test.jpg --output boxed.jpg --json faces.json --normalized
+mf yolo camera --camera 0                     # press q to quit
+mf yolo video input.mp4 --output detected.mp4 --json frames.jsonl
+mf yolo benchmark --image test.jpg
+mf yolo export                                # writes models/yolov8n-face-lindevs.onnx and checks it
+```
+
+Network cameras work too. Keep the password out of the command by using environment variables; logs print the address without the user name and password:
+
+```bash
+export CAM_USER=admin CAM_PASS=secret
+mf yolo camera --source 'rtsp://${CAM_USER}:${CAM_PASS}@192.168.1.25/stream'
+```
+
+From Python:
+
+```python
+from meta_face.yolo_face import FaceDetector
+
+detector = FaceDetector(model_path="models/yolov8n-face-lindevs.pt")
+for face in detector.detect(frame):          # frame is an OpenCV BGR image
+    print(face.x1, face.y1, face.x2, face.y2, face.confidence)
+```
+
+See [examples/yolo_face.py](examples/yolo_face.py) for a callback example.
+
+### Settings
+
+Defaults live in [config/yolo_face.toml](config/yolo_face.toml). Command-line options beat the file, and the file beats built-in defaults.
+
+| Setting | Option | Default | Meaning |
+|---------|--------|---------|---------|
+| model path | `--model` | `models/yolov8n-face-lindevs.pt` | `.pt` runs through Ultralytics; `.onnx` runs on ONNX Runtime with no PyTorch |
+| confidence | `--confidence` | 0.40 | Lower finds more faces and more mistakes |
+| IOU | `--iou` | 0.45 | How much two boxes may overlap before the weaker one is dropped |
+| image size | `--size` | 640 | Size the model sees (320 to 1280, multiple of 32). Bigger finds small faces but is slower. Boxes are always in original-image pixels |
+| device | `--device` | `auto` | `auto` tries CUDA, then Apple MPS, then CPU. Asking for `cuda` when there is none is an error |
+| FP16 | `--half` | off | Faster on NVIDIA GPUs |
+| frame skip | `--frame-skip` | 0 | Run the model on every N+1th frame; skipped frames keep the last boxes |
+| minimum face | `--min-width`, `--min-height` | 0 (off) | Drop tiny faces only if you want to |
+
+Small, far-away faces are the usual miss. Try these in order: nano at 640, nano at 960, small (`--yolo-variant s`) at 640, small at 960. On a CPU that is too slow, try `--size 416` or `--size 512`, or export to ONNX.
+
+On an RTX 3060, nano at 640 runs about 18 ms per frame (14 ms with `--half`). On CPU it runs about 50 ms.
+
+JSON for one image:
+
+```json
+{"width": 1920, "height": 1080,
+ "faces": [{"x1": 463, "y1": 212, "x2": 621, "y2": 401, "width": 158, "height": 189, "confidence": 0.936}]}
+```
+
+Video and camera `--json` write one line per frame: `{"frame": 421, "timestamp_ms": 14033, "faces": [...]}`.
+
+The `yolo` backend also shows up in `mf backends`.
 
 ---
 
