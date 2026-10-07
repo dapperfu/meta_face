@@ -9,7 +9,22 @@ import pytest
 from meta_face.deps import (
     PipelineDependencyError,
     adjust_per_image_tools_for_runtime,
+    ensure_pkg_resources,
+    require_dlib_runtime,
 )
+
+
+def test_face_recognition_models_imports_without_pkg_resources() -> None:
+    import sys
+
+    sys.modules.pop("face_recognition_models", None)
+    sys.modules.pop("pkg_resources", None)
+    ensure_pkg_resources()
+    import face_recognition_models
+
+    landmark_model = face_recognition_models.pose_predictor_model_location()
+    assert landmark_model.endswith("shape_predictor_68_face_landmarks.dat")
+    require_dlib_runtime()
 
 
 def test_adjust_per_image_tools_keeps_available_analysis() -> None:

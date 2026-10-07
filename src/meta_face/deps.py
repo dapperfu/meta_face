@@ -52,16 +52,48 @@ def require_insightface_runtime() -> None:
         ) from None
 
 
+def ensure_pkg_resources() -> None:
+    """Provide pkg_resources.resource_filename when setuptools no longer ships it.
+
+    face_recognition_models 0.3.0 imports pkg_resources at module level. Current
+    setuptools releases omit that module.
+    """
+    import sys
+
+    if "pkg_resources" in sys.modules:
+        return
+    try:
+        import pkg_resources  # noqa: F401
+    except ImportError:
+        import importlib.resources
+        import types
+
+        def resource_filename(package_or_requirement: str, resource_name: str) -> str:
+            parts = [part for part in resource_name.split("/") if part]
+            return str(importlib.resources.files(package_or_requirement).joinpath(*parts))
+
+        module = types.ModuleType("pkg_resources")
+        module.resource_filename = resource_filename  # type: ignore[attr-defined]
+        sys.modules["pkg_resources"] = module
+
+
 def require_dlib_runtime() -> None:
     """Ensure dlib HOG models load without importing face_recognition's CUDA CNN."""
+    ensure_pkg_resources()
     try:
         import dlib  # noqa: F401
         import face_recognition_models  # noqa: F401
-    except ImportError:
+    except ImportError as exc:
+        missing = getattr(exc, "name", "") or ""
+        if missing == "pkg_resources" or "pkg_resources" in str(exc):
+            raise PipelineDependencyError(
+                "face_recognition_models needs pkg_resources from setuptools. "
+                "Install the project dependencies: pip install -e ."
+            ) from exc
         raise PipelineDependencyError(
             "dlib/face_recognition_models are not installed. Install the project "
-            "dependencies: pip install -e ."
-        ) from None
+            f"dependencies: pip install -e . ({exc})"
+        ) from exc
     from meta_face.config import DLIB_MODEL
 
     if DLIB_MODEL != "cnn":
