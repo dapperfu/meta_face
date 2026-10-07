@@ -46,6 +46,7 @@ from meta_face.tools.registry import validate_tools
 from meta_face.worker import start_workers
 from meta_face.sdk_cli import sdk_cmd
 from meta_face.coordinate_migration import normalize_coordinates
+from meta_face.yolo_face.cli import yolo as yolo_cmd
 
 
 @click.group()
@@ -56,6 +57,7 @@ def main() -> None:
 
 main.add_command(sdk_cmd)
 main.add_command(normalize_coordinates)
+main.add_command(yolo_cmd)
 
 
 def _exit_on_dependency_error(exc: PipelineDependencyError) -> None:
