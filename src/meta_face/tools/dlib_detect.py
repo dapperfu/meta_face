@@ -93,6 +93,10 @@ def named_landmarks_from_parts(parts: list[tuple[int, int]]) -> dict[str, list[t
 def _hog_detect(image_rgb: np.ndarray, *, upsample: int = 1) -> list[DlibFace]:
     """CPU HOG + 68-point predictor without importing face_recognition's CUDA CNN."""
     import dlib
+
+    from meta_face.deps import ensure_pkg_resources
+
+    ensure_pkg_resources()
     import face_recognition_models
 
     detector = dlib.get_frontal_face_detector()
