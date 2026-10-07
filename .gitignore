@@ -55,6 +55,8 @@ ENV/
 data/
 *.faiss
 *.faiss.meta
+*.scar.lock
+*.scar.tmp.*
 
 # insightface model cache
 .insightface/
