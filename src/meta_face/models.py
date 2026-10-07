@@ -54,6 +54,9 @@ def dlib_model_dir() -> Path:
 def is_dlib_available() -> bool:
     """True when face_recognition_models provides required .dat files."""
     try:
+        from meta_face.deps import ensure_pkg_resources
+
+        ensure_pkg_resources()
         import face_recognition_models
     except ImportError:
         return False
@@ -74,6 +77,9 @@ def download_dlib_models(*, force: bool = False) -> Path:
             "Reinstall: pip install --force-reinstall face_recognition"
         )
 
+    from meta_face.deps import ensure_pkg_resources
+
+    ensure_pkg_resources()
     import face_recognition_models
 
     dest = dlib_model_dir()
